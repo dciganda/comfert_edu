@@ -1,0 +1,936 @@
+plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf = T, ccf_match = T,
+                     ccf_edu = T, ccf_edu_obs = T, ccf_edu_obs_match = T, mab = T, mabs = T, unplanned = F,
+                     unwanted = F, desired = T,
+                     gap = T, gap_edu = T, css = T, ysd = 1960, colour = F, save = F) {
+  
+  out_path <- file.path("..","data",country,"out")
+  save_path <- "../../latex/plots/"
+  res_names <- sapply(res_dir, function(x) {list.files(x, "RData", full.names = TRUE)})
+  tyears <- length(iniY:(endY-1))
+  every_nth <- function(x, nth, empty = TRUE, inverse = FALSE) {
+    if (!inverse) {
+      if(empty) {
+        x[1:nth == 1] <- ""
+        x
+      } else {
+        x[1:nth != 1]
+      }
+    } else {
+      if(empty) {
+        x[1:nth != 1] <- ""
+        x
+      } else {
+        x[1:nth == 1]
+      }
+    }
+  }
+  base_breaks_x <- function(x){
+    b <- pretty(x)
+    d <- data.frame(y=-Inf, yend=-Inf, x=min(b), xend=max(b))
+    list(geom_segment(data=d, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+         scale_x_continuous(breaks=b))
+  }
+  base_breaks_y <- function(x){
+    b <- pretty(x)
+    d <- data.frame(x=-Inf, xend=-Inf, y=min(b), yend=max(b))
+    list(geom_segment(data=d, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+         scale_y_continuous(breaks=b))
+  }
+  long_dat <- function(sim, obs, nsim, ysd, iniY, endY){
+    
+    sim_frame <- as.data.frame(do.call("cbind", sim))
+    sim_frame$Year <- iniY:endY
+    sim_frame$mean <- apply(sim_frame[1:nsim], 1, mean)
+    sim_dat <- sim_frame[,c(nsim+1, 1:nsim, nsim+2)]
+    
+    if(length(obs)>1){
+      
+      sim_obs <- merge(sim_dat, obs, by = "Year", all = T)
+      sim_obs_s <- sim_obs[sim_obs$Year >= ysd,]
+      names(sim_obs_s) <- c("year", rep("Simulated", nsim),
+                            "Mean of simulations", "Observed") 
+      
+      for(i in 2:(nsim+1)){
+        colnames(sim_obs_s)[i] <- paste0(names(sim_obs_s)[i],"_", i-1)
+      }
+      
+      dat_long <- reshape(sim_obs_s, dir = "long", idvar = "year",
+                          names(sim_obs_s)[c(2:ncol(sim_obs_s))], v.names = "vals",
+                          timevar = "type", times = names(sim_obs_s)[c(2:ncol(sim_obs_s))])
+      dat_long$mean <- ifelse(dat_long$type %in% c("Mean of simulations", "Observed"), 1, 0)
+      
+    }else{
+      
+      sim_dat_s <- sim_dat[sim_dat$Year >= ysd,]
+      names(sim_dat_s) <- c("year", rep("Simulated", nsim),
+                            "Mean of simulations") 
+      
+      for(i in 2:(nsim+1)){
+        colnames(sim_dat_s)[i] <- paste0(names(sim_dat_s)[i],"_", i-1)
+      }
+      dat_long <- reshape(sim_dat_s, dir = "long", idvar = "Year",
+                          names(sim_dat_s)[c(2:ncol(sim_dat_s))], v.names = "vals",
+                          timevar = "type", times = names(sim_dat_s)[c(2:ncol(sim_dat_s))])
+      dat_long$mean <- ifelse(dat_long$type %in% c("Mean of simulations"), 1, 0)
+    }
+    
+    dat_long$mean <- ifelse(dat_long$type == "Mean of simulations", 2, dat_long$mean )
+    dat_long$r_type <- ifelse(dat_long$type %in% c("Mean of simulations", "Simulated"), 0, 1)
+    dat_long$r_type <- ifelse(dat_long$type == "Mean of simulations", 2, dat_long$r_type)
+    
+    return(dat_long)
+  } 
+  p_obs_sim <- function(dat,colour, x1, x2, y1, y2){
+   
+    if(colour){
+      col <- c("firebrick", "darkorchid4", "firebrick")
+      
+    }else{
+      col <- c("grey65", "grey0", "grey65")
+    }
+    
+   lbs <- c("Simulated", "Observed", "Mean of simulations")
+   
+   length_grid <- 20
+   
+   break_x <- data.frame(x1, x2, y = seq(y1, y2, length.out = length_grid))
+   break_y <- data.frame(y1, y2, x = seq(x1, x2, length.out = length_grid))
+   dx <- data.frame(y=-Inf, yend=-Inf, x=x1, xend=x2)
+   dy <- data.frame(x=-Inf, xend=-Inf, y=y1, yend=y2)
+   
+   p <-  ggplot(dat,
+           aes(x = year,
+               y = vals,
+               group = as.factor(type),
+               size = as.factor(mean),
+               linetype = as.factor(mean),
+               shape = as.factor(mean),
+               colour = as.factor(mean))) +
+     geom_segment(aes(x = x1, y = y, xend = x2, yend =y),
+                  colour = "grey84", lwd = 0.4,
+                  data = break_x, inherit.aes = F,
+                  alpha = 0.4)+
+     geom_segment(aes(x = x, y = y1, xend = x, yend =y2),
+                  colour = "grey84", lwd = 0.4,
+                  data = break_y,
+                  inherit.aes = F,alpha = 0.4)+
+      geom_line() +
+      geom_point(alpha = 0.8) +
+      scale_colour_manual(values = col,
+                          labels = lbs)+
+      scale_shape_manual(values = c(NA,16,16), labels = lbs)+
+      scale_linetype_manual( values = c("dotted","blank","blank"), labels = lbs)+
+      scale_size_manual( values = c(0.5, 2.5, 2.5), labels = lbs)+
+      guides(shape = guide_legend(override.aes = list(size=c(1, 3.5, 3.5))))+
+      theme_bw() +
+      theme(legend.position = c(0.7,0.8),
+            legend.title=element_blank()) +
+      theme(legend.text = element_text(size = 15,
+                                       margin = margin(l = 1, unit = "pt")),
+            legend.key.height=unit(3,"point"),
+            legend.key.size = unit(1, "cm"),
+            legend.key = element_rect(colour = "transparent", fill = NA),
+            legend.background=element_blank())+
+      theme(axis.text = element_text(size = 10),
+            axis.title=element_text(size=10))+
+      theme(panel.border = element_blank(),
+            panel.grid = element_blank())+
+     theme(plot.margin = unit(c(1,1,1,1), "cm"))+
+     list(geom_segment(data=dx, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+          scale_x_continuous(breaks = round(seq(x1,x2, length.out = length_grid),0),
+                             labels = every_nth(round(seq(x1,x2,length.out =length_grid),0), 5,
+                                                inverse = TRUE)))+
+     list(geom_segment(data=dy, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+          scale_y_continuous(breaks=round(seq(y1,y2,length.out = length_grid),1),
+                             labels = every_nth(round(seq(y1,y2,length.out = length_grid),1), 5,
+                                                inverse = TRUE)))+
+     theme(plot.background = element_rect(fill = "transparent",colour = NA),
+           panel.background = element_rect(fill = "transparent",colour = NA))
+     
+
+   return(p)
+    
+  }
+  p_sim <- function(dat, ylim, xlim, colour){
+    
+    if(colour){
+      col <- c("brown2", "brown2")
+    }else{
+      col <- c("grey65", "grey65")
+    }
+    
+    lbs <- c("Simulated", "Mean of simulations")
+    ggplot(dat,
+           aes(x = year,
+               y = vals,
+               group = as.factor(type),
+               size = as.factor(mean),
+               linetype = as.factor(mean),
+               shape = as.factor(mean),
+               colour = as.factor(mean))) +
+      geom_line() +
+      geom_point() +
+      xlim(xlim) +
+      ylim(ylim) +
+      scale_colour_manual(values = col,
+                          labels = lbs)+
+      scale_shape_manual( values = c(NA,16), labels = lbs)+
+      scale_linetype_manual( values = c("dotted","blank"), labels = lbs)+
+      scale_size_manual( values = c(0.5, 2.5), labels = lbs)+
+      guides(shape = guide_legend(override.aes = list(size=c(1, 3.55))))+
+      theme_bw() +
+      theme(legend.position = c(0.7,0.2),
+            legend.title=element_blank()) +
+      theme(legend.text = element_text(size = 13,
+                                       margin = margin(l = 1, unit = "pt")),
+            legend.key.height=unit(3,"point"),
+            legend.key.size = unit(1, "cm"),
+            legend.key = element_rect(colour = "transparent", fill = NA),
+            legend.background=element_blank())+
+      theme(axis.text = element_text(size = 15),
+            axis.title=element_text(size=15))+
+      theme(plot.background = element_rect(fill = "transparent",colour = NA),
+            panel.background = element_rect(fill = "transparent",colour = NA))
+    
+  }
+  p_sim_cats <- function(dat, ylim, xlim, lbs, lbs_cats, leg_pos, cats, colour){
+    
+    if(colour){
+      col <- c("brown2", rep("orange",cats-1))
+    }else{
+      col <- c("grey65", rep("black",cats-1))
+    }
+    
+    ggplot(dat,
+           aes(x = year,
+               y = vals,
+               group = interaction(cat, mean, type),
+               size = as.factor(mean),
+               linetype = as.factor(mean),
+               shape = as.factor(cat),
+               colour = as.factor(cat))) +
+      geom_line() +
+      geom_point() +
+      xlim(xlim) +
+      ylim(ylim) +
+      scale_colour_manual(values = col,
+                          labels = lbs_cats)+
+      scale_shape_manual(values = c(16,15,17,18), labels = lbs_cats)+
+      scale_linetype_manual(values = c("dotdash","blank"), labels = lbs)+
+      scale_size_manual(values = c(0.5, 2.5), labels = lbs)+
+      guides(linetype = FALSE,
+             size = FALSE,
+             colour = FALSE,
+             shape = guide_legend(override.aes = list(colour = col,
+                                                      size=5)))+
+      theme_bw() +
+      theme(legend.position = leg_pos,
+            legend.title=element_blank()) +
+      theme(legend.text = element_text(size = 13,
+                                       margin = margin(l = 1, unit = "pt")),
+            legend.key.height=unit(3,"point"),
+            legend.key.size = unit(1, "cm"),
+            legend.key = element_rect(colour = "transparent", fill = NA),
+            legend.background=element_blank())+
+      theme(axis.text = element_text(size = 15),
+            axis.title=element_text(size=15))+
+      theme(plot.background = element_rect(fill = "transparent",colour = NA),
+            panel.background = element_rect(fill = "transparent",colour = NA))
+    
+  }
+  p_sim_obs_cats <- function(dat, x1, x2, y1, y2, lbs, lbs_cats, leg_pos, colour){
+    
+    if(colour){
+      col <- c("firebrick", "darkorchid4", "firebrick")
+    }else{
+      col <- c("grey65","black","grey65")
+    }
+    
+    length_grid <- 20
+    
+    break_x <- data.frame(x1, x2, y = seq(y1, y2, length.out = length_grid))
+    break_y <- data.frame(y1, y2, x = seq(x1, x2, length.out = length_grid))
+    dx <- data.frame(y=-Inf, yend=-Inf, x=x1, xend=x2)
+    dy <- data.frame(x=-Inf, xend=-Inf, y=y1, yend=y2)
+    
+    
+    ggplot(dat,
+           aes(x = year,
+               y = vals,
+               group = interaction(cat, mean, type),
+               size = as.factor(mean),
+               linetype = as.factor(mean),
+               shape = as.factor(mean),
+               colour = as.factor(mean))) +
+      geom_segment(aes(x = x1, y = y, xend = x2, yend =y),
+                   colour = "grey84", lwd = 0.4,
+                   data = break_x, inherit.aes = F,
+                   alpha = 0.4)+
+      geom_segment(aes(x = x, y = y1, xend = x, yend =y2),
+                   colour = "grey84", lwd = 0.4,
+                   data = break_y,
+                   inherit.aes = F,alpha = 0.4) +
+      geom_line() +
+      geom_point(alpha = 0.8) +
+      scale_colour_manual(values = col,
+                          labels = lbs)+
+      scale_shape_manual(values = c(NA,16,16), labels = lbs)+
+      scale_linetype_manual(values = c("dotted","blank", "blank"), labels = lbs)+
+      scale_size_manual(values = c(0.5, 2.5, 2.5), labels = lbs)+
+      guides(shape = guide_legend(override.aes = list(size=c(1, 3.5, 3.5))))+
+      theme_bw() +
+      theme(legend.position = c(0.7,0.8),
+            legend.title=element_blank()) +
+      theme(legend.text = element_text(size = 15,
+                                       margin = margin(l = 1, unit = "pt")),
+            legend.key.height=unit(3,"point"),
+            legend.key.size = unit(1, "cm"),
+            legend.key = element_rect(colour = "transparent", fill = NA),
+            legend.background=element_blank())+
+      theme(axis.text = element_text(size = 10),
+            axis.title=element_text(size=10))+
+      theme(panel.border = element_blank(),
+            panel.grid = element_blank())+
+      theme(plot.margin = unit(c(1,1,1,1), "cm"))+
+      list(geom_segment(data=dx, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+           scale_x_continuous(breaks = round(seq(x1,x2, length.out = length_grid),0),
+                              labels = every_nth(round(seq(x1,x2,length.out =length_grid),0), 5,
+                                                 inverse = TRUE)))+
+      list(geom_segment(data=dy, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+           scale_y_continuous(breaks=round(seq(y1,y2,length.out = length_grid),1),
+                              labels = every_nth(round(seq(y1,y2,length.out = length_grid),1), 5,
+                                                 inverse = TRUE)))+
+      theme(plot.background = element_rect(fill = "transparent",colour = NA),
+            panel.background = element_rect(fill = "transparent",colour = NA))
+    
+  }
+  save_plot <- function(name){
+    pdf(paste0(save_path, name,".pdf"), width=6, height=6) 
+    print(p)
+    dev.off()
+  }
+  shape_plot <- function(nsim, obs, sim, ylims, d_fit, colour){
+    
+    if(colour){
+      col <- c("brown2", "grey65", "brown2")
+    }else{
+      col <- c("grey65", "grey0", "grey65")
+    }
+    
+    dat_obs <- as.data.frame(obs)
+    dat_obs$year <- rownames(obs)
+    dat_obs <- dat_obs[dat_obs$year %in% c(1960:2011),]
+    
+    mean_dat_sim <- as.data.frame(Reduce("+", sim) / length(sim))
+    dat_sim <- as.data.frame(do.call("cbind", sim))
+    dat_sim$year <- as.numeric(rownames(dat_sim))
+    dat_sim <- cbind(dat_sim, mean_dat_sim)
+    names(dat_sim) <- c(rep("Simulated", nsim),"year", "Mean of simulations")
+    
+    dat_aux_0 <- merge(dat_obs, dat_sim, by = "year", all = T)
+    dat_aux_1 <- dat_aux_0[dat_aux_0$year > 1960,]
+    names(dat_aux_1)[2] <- c("Observed")
+    
+    dat_long <- reshape(dat_aux_1, dir = "long", idvar = "year",
+                        names(dat_aux_1)[c(2:ncol(dat_aux_1))], v.names = "vals",
+                        timevar = "type", times = names(dat_aux_1)[c(2:ncol(dat_aux_1))])
+    
+    dat_long$mean <- ifelse(dat_long$type %in% c("Mean of simulations", "Observed"), 1, 0)
+    dat_long$mean <- ifelse(dat_long$type == "Mean of simulations", 2, dat_long$mean )
+    dat_long$year <- as.numeric(dat_long$year)
+    
+    lbs <- c("Simulated", "Observed", "Mean of simulations")
+    
+    par(mfrow=c(1, 1))
+    par(bg=NA)
+    p <- ggplot(dat_long,
+                aes(x = year,
+                    y = vals,
+                    group = as.factor(type),
+                    size = as.factor(mean),
+                    linetype = as.factor(mean),
+                    shape = as.factor(mean),
+                    colour = as.factor(mean))) +
+      geom_line() +
+      geom_point() +
+      ylim(ylims) +
+      scale_colour_manual(values = col,
+                          labels = lbs)+
+      scale_shape_manual( values = c(NA,16,16), labels = lbs)+
+      scale_linetype_manual( values = c("dotted","blank", "blank"), labels = lbs)+
+      scale_size_manual( values = c(0.5, 2.5, 2.5), labels = lbs)+
+      guides(shape = guide_legend(override.aes = list(size=c(1, 3.5, 3.5))))+
+      theme_bw() +
+      theme(legend.position = c(0.7,0.8),
+            legend.title=element_blank()) +
+      theme(legend.text = element_text(size = 13,
+                                       margin = margin(l = 1, unit = "pt")),
+            legend.key.height=unit(3,"point"),
+            legend.key.size = unit(1, "cm"),
+            legend.key = element_rect(colour = "transparent", fill = NA),
+            legend.background=element_blank())+
+      theme(axis.text = element_text(size = 15),
+            axis.title=element_text(size=15))+
+      theme(plot.background = element_rect(fill = "transparent",colour = NA),
+            panel.background = element_rect(fill = "transparent",colour = NA))
+    if(d_fit){
+
+      xlims <- c(1960,2016)
+      
+      p <- p + xlim(xlims)
+    }
+    
+    return(p)
+  }
+  shape_plot_sim <- function(nsim, sim,x1, x2, y1, y2, colour){
+    
+    mean_dat_sim <- as.data.frame(Reduce("+", sim) / length(sim))
+    dat_sim <- as.data.frame(do.call("cbind", sim))
+    dat_sim$year <- as.numeric(rownames(dat_sim))
+    dat_sim <- cbind(dat_sim, mean_dat_sim)
+    names(dat_sim) <- c(rep("Simulated", nsim),"year", "Mean of simulations")
+    
+    dat_aux_1 <- dat_sim[dat_sim$year > 1960,]
+    dat_aux_1 <- dat_aux_1[c(nsim+1,1:nsim,ncol(dat_aux_1))]
+    
+    dat_long <- reshape(dat_aux_1, dir = "long", idvar = "year",
+                        names(dat_aux_1)[c(2:ncol(dat_aux_1))], v.names = "vals",
+                        timevar = "type", times = names(dat_aux_1)[c(2:ncol(dat_aux_1))])
+    
+    dat_long$mean <- ifelse(dat_long$type %in% c("Mean of simulations", "Observed"), 1, 0)
+    dat_long$mean <- ifelse(dat_long$type == "Mean of simulations", 2, dat_long$mean )
+    dat_long$year <- as.numeric(dat_long$year)
+    
+    lbs <- c("Simulated", "Mean of simulations")
+    
+    length_grid <- 20
+    break_x <- data.frame(x1, x2, y = seq(y1, y2, length.out = length_grid))
+    break_y <- data.frame(y1, y2, x = seq(x1, x2, length.out = length_grid))
+    dx <- data.frame(y=-Inf, yend=-Inf, x=x1, xend=x2)
+    dy <- data.frame(x=-Inf, xend=-Inf, y=y1, yend=y2)
+    
+    par(mfrow=c(1, 1))
+    par(bg=NA)
+    p <- ggplot(dat_long,
+                aes(x = year,
+                    y = vals,
+                    group = as.factor(type),
+                    size = as.factor(mean),
+                    linetype = as.factor(mean),
+                    shape = as.factor(mean),
+                    colour = as.factor(mean))) +
+      geom_segment(aes(x = x1, y = y, xend = x2, yend =y),
+                   colour = "grey84", lwd = 0.4,
+                   data = break_x, inherit.aes = F,
+                   alpha = 0.4)+
+      geom_segment(aes(x = x, y = y1, xend = x, yend =y2),
+                   colour = "grey84", lwd = 0.4,
+                   data = break_y,
+                   inherit.aes = F,alpha = 0.4)+
+      geom_line() +
+      geom_point() +
+      theme_bw() +
+      scale_colour_manual(values = c("firebrick","firebrick"),
+                          labels = lbs)+
+      scale_shape_manual( values = c(NA,16), labels = lbs)+
+      scale_linetype_manual( values = c("dotted","blank"), labels = lbs)+
+      scale_size_manual( values = c(0.5, 2.5), labels = lbs)+
+      guides(shape = guide_legend(override.aes = list(size=c(1, 3.5))))+
+      theme(legend.position = c(0.7,0.8),
+            legend.title=element_blank()) +
+      theme(legend.text = element_text(size = 15,
+                                       margin = margin(l = 1, unit = "pt")),
+            legend.key.height=unit(3,"point"),
+            legend.key.size = unit(1, "cm"),
+            legend.key = element_rect(colour = "transparent", fill = NA),
+            legend.background=element_blank())+
+      theme(axis.text = element_text(size = 10),
+            axis.title=element_text(size=10))+
+      theme(panel.border = element_blank(),
+            panel.grid = element_blank())+
+      theme(plot.margin = unit(c(1,1,1,1), "cm"))+
+      list(geom_segment(data=dx, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+           scale_x_continuous(breaks = round(seq(x1,x2, length.out = length_grid),0),
+                              labels = every_nth(round(seq(x1,x2,length.out =length_grid),0), 5,
+                                                 inverse = TRUE)))+
+      list(geom_segment(data=dy, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+           scale_y_continuous(breaks=round(seq(y1,y2,length.out = length_grid),1),
+                              labels = every_nth(round(seq(y1,y2,length.out = length_grid),1), 5,
+                                                 inverse = TRUE)))+
+      theme(plot.background = element_rect(fill = "transparent",colour = NA),
+            panel.background = element_rect(fill = "transparent",colour = NA))
+
+    return(p)
+  }
+  
+  plot_year_asfr <- function(year, obs, sim, ylims = c(0, ymax),
+                             colour = colour, save_year_p = save){
+    
+    get_year <- function(year, dat){
+      extract <- as.data.frame(as.numeric(dat[as.character(year),]))
+      return(extract)
+    } 
+ 
+    obs <- get_year(year, obs)
+    obs$Year <- 15:49
+    
+    sim <- lapply(sim, function(x) get_year(year, x))
+    
+    ldat <- long_dat(sim, obs, nsim, ysd = 0, iniY = 15, endY = 49)
+    
+    p_year <- p_obs_sim(ldat,
+                        x1 = 15,
+                        x2 = 49,
+                        y1 = ylims[1],
+                        y2 = ylims[2],
+                        colour = colour)
+    
+    p_year <- p_year + labs(y="f(x)",x = "Age")
+    
+    if(year != 1970){
+      p_year <- p_year + theme(legend.position = "none")
+    }
+    
+    if(save_year_p){
+      pdf(paste0("../../latex/plots/","/asfr_", year,".pdf"), width=5, height=5) 
+      print(p_year)
+      dev.off()
+    }
+    return(p_year)
+  }
+
+  if(asfr | unplanned | unwanted | desired){
+    
+    source("../estimation/get_obs.R")
+    source("../estimation/get_sim.R")
+    obs_set <- get_obs(country, ysd)
+    sim_set <- get_sim(res_dir, iniY, endY, nsim, obs_set, asfr, unplanned, unwanted, desired, all_sim = T)
+    
+  }
+  
+  if(asfr){
+    
+    if(class(obs_set) == "list"){
+      obs <- obs_set$obs_asfr
+    }else{
+      obs <- obs_set
+    }
+    
+    sim <- sim_set$sim_asfr
+    
+    ymax <- max(max(unlist(sim)), max(unlist(obs)))
+    
+    p <- lapply(as.numeric(rownames(obs)), plot_year_asfr, obs, sim, colour = colour)
+    
+    print(p)
+  }
+  
+  if(tfr){
+    # Obs
+    obs <- read.table(file.path(out_path, "tfr_hfd.txt"),
+                      skip = 2, header = T,
+                      stringsAsFactors = F)[1:2]
+    
+    # sim
+    sim <- sapply(res_names, function(x) readRDS(x)["tfr"])
+    
+    ysd <- max(1960, min(obs$Year))
+    
+    ldat <- long_dat(sim, obs, nsim, ysd = ysd, iniY = iniY, endY = endY-1)
+    
+    ldat <- ldat[ldat$year >= 1970,]
+    
+    p <- p_obs_sim(ldat,
+                   y1 = 1.45,
+                   y2 = 2.8,
+                   x1 = min(ldat$year)-1,
+                   x2 = max(ldat$year)+1,
+                   colour = colour)
+    
+    p <- p + xlab("Year") + ylab("Total Fertility Rates")
+    
+      
+    if(save){ save_plot("tfr") }
+    
+    print(p)
+    
+  } 
+  
+  if(ccf){
+    # sim
+    sim <- sapply(res_names, function(x) readRDS(x)["cohort"])
+    sim <- lapply(sim, function(x) x[,2])
+    # obs
+    obs <- read.table(file.path(out_path,"ccf_hfd.txt"), skip = 2, header = T,
+                          stringsAsFactors = F)[1:2]
+    obs$CCF<- ifelse(obs$CCF==".", NA, obs$CCF)
+    obs$CCF <- as.numeric(obs$CCF)
+    names(obs)[1] <- "Year" 
+    ldat <- long_dat(sim, obs, nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
+    
+    p <- p_obs_sim(ldat,
+                   x1 = 1928,
+                   x2 = endY-50,
+                   y1 = 1,
+                   y2 = 3.5,
+                   colour = colour)
+    
+    p <- p + xlab("Cohort") + ylab("Completed Cohort Fertility")
+    
+    if(save){ save_plot("ccf") }
+    
+    print(p)
+  }
+  
+  if(ccf_match){
+    # sim
+    sim <- sapply(res_names, function(x) readRDS(x)["cohort"])
+    sim <- lapply(sim, function(x) {names(x) <- c("Year","val")
+                                    return(x)})
+    # obs
+    obs <- read.table(file.path(out_path,"ccf_hfd.txt"), skip = 2, header = T,
+                      stringsAsFactors = F)[1:2]
+    obs$CCF<- ifelse(obs$CCF==".", NA, obs$CCF)
+    obs$CCF <- as.numeric(obs$CCF)
+    names(obs)[1] <- "Year" 
+    obs <- obs[obs$Year <= 1968,]
+    sim <- lapply(sim, function(x) merge(x, obs))
+    sim <- lapply(sim, function(x) x[,2])
+    
+    ldat <- long_dat(sim, obs, nsim, ysd = obs$Year[1], iniY = obs$Year[1], endY = endY-50-1)
+    
+    p <- p_obs_sim(ldat,
+                   x1 = obs$Year[1]-1,
+                   x2 = endY-50,
+                   y1 = 1,
+                   y2 = 3.5,
+                   colour = colour)
+    
+    p <- p + xlab("Cohort") + ylab("Completed Cohort Fertility")
+    
+    if(save){ save_plot("ccf_match") }
+    
+    print(p)
+  }
+  
+  if(ccf_edu){
+    
+    sim <- list()
+    sim[[1]] <- sapply(res_names, function(x) readRDS(x)["cohort"])
+    for (i in 1:3) {
+      sim[[1+i]] <- sapply(res_names, function(x) readRDS(x)[paste0("cohort", i)])
+    }
+    
+    sim <- lapply(sim, function(x) lapply(x, function(j) j[,2]))
+    sim_all <- lapply(sim, long_dat, obs = F,
+                      nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
+    
+    sim <- do.call("rbind", sim_all)
+    sim$cat <- rep(0:3, each = nrow(sim_all[[1]]))
+    
+    p <- p_sim_cats(sim, ylim = c(1, 4), xlim = c(1928, 1968),
+                    lbs = c("Simulated", "Mean of simulations"),
+                    lbs_cats = c("Mean", "Low Edu", "Med Edu", "High Edu"),
+                    leg_pos = c(0.8,0.7),
+                    cats = 4,
+                    colour = colour) 
+    
+    p <- p + xlab("Cohort") + ylab("Completed Cohort Fertility")
+    
+    if(save){save_plot("ccf_edu")}
+    
+    print(p)
+    
+  }
+  
+  if(ccf_edu_obs){
+    
+    obs <- read.table(file.path(out_path,"ccf_edu"), header = T) 
+    names(obs)[1] <- "Year"
+    
+    obs1 <- obs[,c("Year","CFR.1")] 
+    obs2 <- obs[,c("Year","CFR.3")] 
+    
+    sim <- list()
+    sim[[1]] <- sapply(res_names, function(x) readRDS(x)["cohort"])
+    for (i in 1:3) {
+      sim[[1+i]] <- sapply(res_names, function(x) readRDS(x)[paste0("cohort", i)])
+    }
+    
+    sim <- lapply(sim, function(x) lapply(x, function(j) j[,2]))
+    sim_all <- list()
+    sim_all[[1]] <- long_dat(sim[[2]], obs = obs1, nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
+    sim_all[[2]] <- long_dat(sim[[4]], obs = obs2, nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
+    
+    sim <- do.call("rbind", sim_all)
+    sim$cat <- rep(0:1, each = nrow(sim_all[[1]]))
+    
+    p <- p_sim_obs_cats(sim,
+                        y1 = 1,
+                        y2 = 3.5,
+                        x1 = 1968,
+                        x2 = 1928,
+                        lbs = c("Simulated","Observed", "Mean of simulations"),
+                        lbs_cats = c("Edu1", "Edu3"),
+                        leg_pos = c(0.5, 0.8),
+                        colour = colour) 
+    p <- p + annotate(geom="text", x=1969, y=2.2,
+                      label="Primary", 
+                      color="black", 
+                      size = 4) + 
+      annotate(geom="text", x=1969, y=1.8,
+               label="Tertiary",
+               color="black",
+               size = 4)
+    
+    if(save){save_plot("ccf_edu_obs") }
+    
+    print(p)
+    
+  }
+  
+  if(ccf_edu_obs_match){
+    
+    obs <- read.table(file.path(out_path,"ccf_edu"), header = T) 
+    names(obs)[1] <- "Year"
+    obs <- obs[obs$Year <= 1968,]
+    
+    obs1 <- obs[,c("Year","CFR.1")] 
+    obs2 <- obs[,c("Year","CFR.3")] 
+    
+    sim <- list()
+    sim[[1]] <- sapply(res_names, function(x) readRDS(x)["cohort"])
+    for (i in 1:3) {
+      sim[[1+i]] <- sapply(res_names, function(x) readRDS(x)[paste0("cohort", i)])
+    }
+    
+    sim <- lapply(sim, function(x) lapply(x, function(j) {names(j) <- c("Year", "val")
+                                                          return(j)}))
+    sim <- lapply(sim, function(x) lapply(x, function(j) merge(j, obs)))
+    sim <- lapply(sim, function(x) lapply(x, function(j) j[,2]))
+    sim_all <- list()
+    sim_all[[1]] <- long_dat(sim[[2]], obs = obs1, nsim, ysd = obs$Year[1],
+                             iniY = obs$Year[1], endY = endY-50-1)
+    sim_all[[2]] <- long_dat(sim[[4]], obs = obs2, nsim,
+                             ysd = obs$Year[1], iniY = obs$Year[1],
+                             endY = endY-50-1)
+    
+    sim <- do.call("rbind", sim_all)
+    sim$cat <- rep(0:1, each = nrow(sim_all[[1]]))
+    
+    p <- p_sim_obs_cats(sim,
+                        x1 = obs$Year[1]-1,
+                        x2 = 1970,
+                        y1 = 1,
+                        y2 = 3.5,
+                        lbs = c("Simulated","Observed", "Mean of simulations"),
+                        lbs_cats = c("Edu1", "Edu3"),
+                        leg_pos = c(0.5, 0.8),
+                        colour = colour) 
+    p <- p + annotate(geom="text", x=1968, y=2.2,
+                      label="Primary", 
+                      color="black", 
+                      size = 4) + 
+      annotate(geom="text", x=1968, y=1.8,
+               label="Tertiary",
+               color="black",
+               size = 4)
+    
+    p <- p + xlab("Cohort") + ylab("Completed Cohort Fertility")
+    
+    if(save){save_plot("ccf_edu_obs_match") }
+    
+    print(p)
+    
+  }
+  
+  if(mab){
+    # Obs
+    obs <- read.table(file.path(out_path,"mab_hfd.txt"), 
+                      skip = 2,
+                      header = T,
+                      stringsAsFactors = F) 
+    
+    obs <- obs[,1:2]
+    
+    # sim
+    sim <- sapply(res_names, function(x) readRDS(x)["meanAgeBirth"])
+    
+    ldat <- long_dat(sim, obs, nsim, ysd = min(obs$Year), iniY = iniY, endY = endY-1)
+
+    p <- p_obs_sim(ldat,
+                   x1 = min(obs$Year)-1,
+                   x2 = endY,
+                   y1 = 20,
+                   y2 = 40,
+                   colour = colour)
+    
+    p <- p + xlab("Year") + ylab("Age")
+    
+    if(save){ save_plot("mab") }
+    
+    print(p)
+    
+  }
+  
+  if(mabs){
+    # Obs
+    obs <- read.table(file.path(out_path,"mab_parity_hfd.txt"), 
+                      skip = 2, header = T,
+                      stringsAsFactors = F) 
+    
+    obs1 <- obs[,c("MAB1","Year")] 
+    obs2 <- obs[,c("MAB2","Year")]
+    
+    # sim
+    sim1 <- sapply(res_names, function(x) readRDS(x)["meanAgeBirth1"])
+    sim2 <- sapply(res_names, function(x) readRDS(x)["meanAgeBirth2"])
+    
+    sim_all <- list()
+    sim_all[[1]] <- long_dat(sim1, obs = obs1, nsim, ysd = min(obs$Year), iniY = iniY, endY = endY-1)
+    sim_all[[2]] <- long_dat(sim2, obs = obs2, nsim, ysd = min(obs$Year), iniY = iniY, endY = endY-1)
+    
+    
+    sim <- do.call("rbind", sim_all)
+    sim$cat <- rep(0:1, each = nrow(sim_all[[1]]))
+    
+    p <- p_sim_obs_cats(sim,
+                        y1 = 20,
+                        y2 = 40,
+                        x1 = 1958,
+                        x2 = 2018,
+                        lbs = c("Simulated","Observed", "Mean of simulations"),
+                        lbs_cats = c("MAB1", "MAB1"),
+                        leg_pos = c(0.3, 0.8),
+                        colour = colour)
+    
+    p <- p + annotate(geom="text", x=2014, y=29,
+                      label="First Births",
+                      color="black",
+                      size = 4) + 
+      annotate(geom="text", x=2014, y=35.5,
+               label="Second Births",
+               color="black",
+               size = 4)
+    
+    p <- p + xlab("Year") + ylab("Mean Age at Birth")
+      
+    if(save){save_plot("mabs")}
+    
+    print(p)
+    
+  }
+  
+  if(unplanned){
+    
+    p <- shape_plot(nsim,obs_set$obs_unplanned, sim_set$sim_unplanned,
+                    ylims = c(0,0.6), colour = colour, d_fit = F)
+    
+    if(save){ save_plot("unplanned") }
+    
+    print(p)
+    
+  }
+  
+  if(unwanted){
+    
+    p <-  shape_plot(nsim, obs_set$obs_unwanted, sim_set$sim_unwanted,
+                     ylims = c(0,0.4),colour = colour, d_fit = F)
+    
+    if(save){ save_plot("unwanted") }
+    
+    print(p)
+    
+  }
+  
+  if(desired){
+    
+    p <-  shape_plot_sim(nsim = 4, sim =  sim_set$sim_desired[1:4],
+                     x1 = 1960,
+                     x2 = endY+1,
+                     y1 = 2,
+                     y2 = 2.7, colour = colour)
+    
+    p <- p + xlab("Year") + ylab("Desired Family Size")
+    
+    if(save){save_plot("desired") }
+    
+    print(p)
+    
+  }
+  
+  if(gap){
+    
+    sim <- sapply(res_names, function(x) readRDS(x)["gapKids"])
+    
+    ldat <- long_dat(sim, obs = F, nsim, ysd = 0, iniY = iniY, endY = endY-1)
+    
+    p <- p_sim(ldat, ylim = c(-1,0.5), xlim= c(1958,endY), colour = colour)
+    
+    if(save){ save_plot("gap") }
+    
+    print(p)
+    
+  }
+  
+  if(gap_edu){
+    
+    sim <- sapply(res_names, function(x) readRDS(x)["gapKids"])
+    sim1 <- sapply(res_names, function(x) readRDS(x)["gapEdu1"])
+    sim2 <- sapply(res_names, function(x) readRDS(x)["gapEdu2"])
+    sim3 <- sapply(res_names, function(x) readRDS(x)["gapEdu3"])
+    
+    sim_all <- lapply(list(sim, sim1, sim2, sim3), long_dat, obs = F,
+                  nsim, ysd = 0, iniY = iniY, endY = endY-1)
+    
+    sim <- do.call("rbind", sim_all)
+    sim$cat <- rep(0:3, each = nrow(sim_all[[1]]))
+    
+    p <- p_sim_cats(sim, ylim = c(-1.5, 0.5), xlim = c(1958, 2018),
+                    lbs = c("Simulated", "Mean of simulations"),
+                    lbs_cats = c("Mean", "Low Edu", "Med Edu", "High Edu"),
+                    leg_pos = c(0.7, 0.3),
+                    cats = 4, colour = colour)
+    
+    if(save){ save_plot("gap_edu") }
+    
+    print(p)
+    
+  }
+  
+  if(css){
+    
+    # Obs css
+    obs  <- read.table(file.path(out_path,"childlessness.csv"),
+                       sep = " ",
+                       skip = 0,
+                       header = T)
+    names(obs)[1] <- "Year" 
+    obs <- obs[obs$Year %in% seq(iniY, endY-1,1),]
+    
+    # sim
+    sim <- lapply(res_names, function(x) readRDS(x)["childless"])
+    sim <- sapply(sim, function(x) lapply(x, function(j) j[-c(1:10),2]*100))
+    
+    ldat <- long_dat(sim, obs, nsim, ysd = 1910, iniY = 1910, endY = endY-50-1)
+    
+    p <- p_obs_sim(ldat,
+                   y1 =0,
+                   y2 = 100,
+                   x1 = 1930,
+                   x2 = endY-50,
+                   colour = colour)
+    
+    if(save){save_plot("css") }
+    
+    print(p)
+    
+  }
+  
+  
+}
+
+
+
+
+
