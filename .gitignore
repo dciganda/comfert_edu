@@ -3,5 +3,5 @@ latex/
 results/
 prep/
 descriptives/
-compute/local/pc.txt
+update/compute/local/pc.txt
 .Rhistory

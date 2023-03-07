@@ -1,6 +1,6 @@
-library(parallel); library(data.table); library(mlegp); library(ggplot2);
-library(splines); library(survival)  
-
+# PACKAGES ####
+p <- c("parallel", "data.table", "mlegp", "splines", "ggplot2", "survival") 
+invisible(lapply(p, library, character.only = TRUE))
 
 start <- Sys.time()
 
@@ -16,11 +16,12 @@ source(file.path("..","analysis","data_prep.R"))
 country <- "NO" # country on which simulations are performed 
 iniY <- 1910 # years for which the simulations are performed
 endY <- 2019 # years for which the simulations are performed
-ini_c <- 50 # size of the initial birth cohorts of the model (affects computation times - 50 takes 10-15 minutes, but should be closer to 1000 for smooth results)
-n0 <- 10 # size of initial sample of param combinations
+ini_c <- 150 # size of the initial birth cohorts of the model (affects computation times - 50 takes 10-15 minutes, but should be closer to 1000 for smooth results)
+n0 <- 40 # size of initial sample of param combinations
 nsim <- 2 # nr of simulations in each evaluated point - this will produce a cluster of size n0*nsim
-ne <- 10 # nr of new evaluations at each iteration of the bayes opt. algorithm
-N <- 20 # total nr of evaluations n0+N
+ne <- 20 # nr of new evaluations at each iteration of the bayes opt. algorithm
+iter <- 2     # nr of iterations
+N <- ne*iter    # total nr of evaluations = n0+N
 
 weights <- c(asfr = .5,
              unplanned = 0.00,
