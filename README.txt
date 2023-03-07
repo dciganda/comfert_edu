@@ -1,5 +1,5 @@
 This repository contains the data and R code needed to reproduce the results in:
-"Reversal in the Association Between Educational Attainment and Fertility Not Driven by Changes in Behavior"
+"Microfoundations of the Weakening Educational Gradient of Fertility"
 
 The file `main.R` in the `local` directory allows to runs the estimation algorithm in a `local`
 computing cluster.
