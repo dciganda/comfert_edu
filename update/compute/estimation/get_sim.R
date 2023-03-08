@@ -2,7 +2,7 @@
 # get simulated rates
 get_sim <- function(res_dir, iniY, endY, nsim, obs, 
                     asfr = T, unplanned = F, unwanted = F,
-                    desired = F, ccf_edu = F, all_sim = F){
+                    desired = F,ccf = F, ccf_edu = F, all_sim = F){
   
   get_sim_results <- function(res_dir, iniY, endY, obs){ 
     
@@ -133,6 +133,42 @@ get_sim <- function(res_dir, iniY, endY, nsim, obs,
         
         sim_data[["sim_desired"]] <- sim_desired
     }
+    
+    # ccf
+    
+    if(ccf){
+      if(length(obs$obs_ccf)>0){
+        c_names <- colnames(obs$obs_ccf) 
+      }else{
+        c_names <- "ccf"  
+      }
+      cohort <- sapply(res_names, function(x) readRDS(x)[paste0("cohort")])
+      
+      names(cohort) <- rep("cohort", length(cohort))
+      
+      sim_cohort_0 <- lapply(cohort, as.matrix)
+      sim_cohort <- lapply(sim_cohort_0,
+                          function(x){j <- as.matrix(x[1:length(iniY:(endY-51)),2]);
+                          colnames(j) <- colnames(obs$obs_ccf);
+                          rownames(j) <- x[,1];
+                          return(as.matrix(j))})
+      
+      if(all_sim){
+        
+        sim_ccf <- sim_cohort
+        
+      }else{
+        sim_ccf <- lapply(sim_cohort,
+                              function(x){x <- x[rownames(x) %in% rownames(obs$obs_ccf),
+                                                 colnames(x) %in% colnames(obs$obs_ccf)];
+                              x <- as.matrix(x);
+                              colnames(x) <- colnames(obs$obs_ccf);
+                              return(x)})
+      }
+      
+      sim_data[["sim_ccf"]] <- sim_ccf
+    }
+    
     # ccf by education
     if(ccf_edu){
 

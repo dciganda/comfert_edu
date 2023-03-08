@@ -1,10 +1,24 @@
-plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf = T, ccf_match = T,
-                     ccf_edu = T, ccf_edu_obs = T, ccf_edu_obs_match = T, mab = T, mabs = T, unplanned = F,
-                     unwanted = F, desired = T,
-                     gap = T, gap_edu = T, css = T, ysd = 1960, colour = F, save = F) {
+plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
+                     weights, asfr = F, tfr = F, ccf = F,
+                     ccf_edu = F, ccf_edu_obs = F, ccf_compare = F, mab = F, mas = F,
+                     mabs = F, unplanned = F, unwanted = F, desired = F,
+                     gap = F, gap_edu = F, css = F, ysd = 1960, colour = F,
+                     scenario = F, save = F, interval = F,
+                     alpha_int = 0.05, fore = F, last_obs_year = 2019) {
+  
+  # Global path
+  global_path <- file.path("results", paste(country),
+                           paste0("n_sim_", nsim),
+                           paste0("ini_c_", ini_c),
+                           paste(weights, collapse = "_"))
+  
+  # Get posterior distribution
+  post <- readRDS(file.path(global_path, "post", "posterior.rds"))[-(1:(n0)),]
+  post[order(post$mse),]
+  opt_res_dir <- check_paramset(res_dir = global_path, rank = 1)
   
   out_path <- file.path("..","data",country,"out")
-  save_path <- "../../latex/plots/"
+  save_path <- file.path("..","..","latex","plots")
   res_names <- sapply(res_dir, function(x) {list.files(x, "RData", full.names = TRUE)})
   tyears <- length(iniY:(endY-1))
   every_nth <- function(x, nth, empty = TRUE, inverse = FALSE) {
@@ -80,8 +94,8 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
     return(dat_long)
   } 
-  p_obs_sim <- function(dat,colour, x1, x2, y1, y2){
-   
+  p_obs_sim <- function(dat,colour, x1, x2, y1, y2, yaxe_tick = 0.1){
+    
     if(colour){
       col <- c("firebrick", "darkorchid4", "firebrick")
       
@@ -89,16 +103,16 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
       col <- c("grey65", "grey0", "grey65")
     }
     
-   lbs <- c("Simulated", "Observed", "Mean of simulations")
-   
-   length_grid <- 20
-   
+    lbs <- c("Simulated", "Observed", "Mean of simulations")
+    
+    length_grid <- 20
+    
    break_x <- data.frame(x1, x2, y = seq(y1, y2, length.out = length_grid))
    break_y <- data.frame(y1, y2, x = seq(x1, x2, length.out = length_grid))
    dx <- data.frame(y=-Inf, yend=-Inf, x=x1, xend=x2)
    dy <- data.frame(x=-Inf, xend=-Inf, y=y1, yend=y2)
    
-   p <-  ggplot(dat,
+   p <- ggplot(dat,
            aes(x = year,
                y = vals,
                group = as.factor(type),
@@ -138,11 +152,12 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
      theme(plot.margin = unit(c(1,1,1,1), "cm"))+
      list(geom_segment(data=dx, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
           scale_x_continuous(breaks = round(seq(x1,x2, length.out = length_grid),0),
-                             labels = every_nth(round(seq(x1,x2,length.out =length_grid),0), 5,
+                             labels = every_nth(round(seq(x1,x2,length.out =length_grid),0), 4,
                                                 inverse = TRUE)))+
      list(geom_segment(data=dy, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
-          scale_y_continuous(breaks=round(seq(y1,y2,length.out = length_grid),1),
-                             labels = every_nth(round(seq(y1,y2,length.out = length_grid),1), 5,
+          scale_y_continuous(breaks=round(seq(y1,y2,yaxe_tick),1),
+                             labels = every_nth(round(seq(y1,y2,yaxe_tick),1),
+                                                length(round(seq(y1,y2,yaxe_tick),1))/4,
                                                 inverse = TRUE)))+
      theme(plot.background = element_rect(fill = "transparent",colour = NA),
            panel.background = element_rect(fill = "transparent",colour = NA))
@@ -246,7 +261,7 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
       col <- c("grey65","black","grey65")
     }
     
-    length_grid <- 20
+    length_grid <- 25
     
     break_x <- data.frame(x1, x2, y = seq(y1, y2, length.out = length_grid))
     break_y <- data.frame(y1, y2, x = seq(x1, x2, length.out = length_grid))
@@ -298,14 +313,80 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
                                                  inverse = TRUE)))+
       list(geom_segment(data=dy, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
            scale_y_continuous(breaks=round(seq(y1,y2,length.out = length_grid),1),
-                              labels = every_nth(round(seq(y1,y2,length.out = length_grid),1), 5,
+                              labels = every_nth(round(seq(y1,y2,length.out = length_grid),1), 3,
                                                  inverse = TRUE)))+
       theme(plot.background = element_rect(fill = "transparent",colour = NA),
             panel.background = element_rect(fill = "transparent",colour = NA))
     
   }
+  p_obs_fore_sc <- function(dat, x1, x2, y1, y2, lbs, lbs_cats, leg_pos, colour){
+
+    if(colour){
+      col <- c("firebrick", "darkorchid4", "orange")
+    }else{
+      col <- c("grey65","black","grey65")
+    }
+
+    length_grid <- 30
+
+    break_x <- data.frame(x1, x2, y = seq(y1, y2, length.out = length_grid))
+    break_y <- data.frame(y1, y2, x = seq(x1, x2, length.out = length_grid))
+    dx <- data.frame(y=-Inf, yend=-Inf, x=x1, xend=x2)
+    dy <- data.frame(x=-Inf, xend=-Inf, y=y1, yend=y2)
+
+
+    ggplot(dat,
+           aes(x = year,
+               y = vals,
+               size = as.factor(mean),
+               linetype = as.factor(mean),
+               shape = as.factor(mean),
+               colour = as.factor(cat))) +
+      geom_segment(aes(x = x1, y = y, xend = x2, yend =y),
+                   colour = "grey84", lwd = 0.4,
+                   data = break_x, inherit.aes = F,
+                   alpha = 0.4)+
+      geom_segment(aes(x = x, y = y1, xend = x, yend =y2),
+                   colour = "grey84", lwd = 0.4,
+                   data = break_y,
+                   inherit.aes = F,alpha = 0.4) +
+      geom_line() +
+      geom_point(alpha = 0.8) +
+      scale_colour_manual(values = col,
+                          labels = lbs)+
+      scale_shape_manual(values = c(NA,16,16), labels = lbs, guide = "none")+
+      scale_linetype_manual(values = c("dotted","blank", "blank"),
+                            labels = lbs, guide = "none")+
+      scale_size_manual(values = c(0.5, 2.5, 2.5), labels = lbs, guide = "none")+
+      theme_bw() +
+      theme(legend.position = c(0.7,0.8),
+            legend.title=element_blank()) +
+      theme(legend.text = element_text(size = 15,
+                                       margin = margin(l = 1, unit = "pt")),
+            legend.key.height=unit(0,"point"),
+            legend.key.size = unit(0, "cm"),
+            legend.key = element_rect(colour = "transparent", fill = NA),
+            legend.background=element_blank())+
+      theme(axis.text = element_text(size = 10),
+            axis.title=element_text(size=10))+
+      theme(panel.border = element_blank(),
+            panel.grid = element_blank())+
+      theme(plot.margin = unit(c(1,1,1,1), "cm"))+
+      list(geom_segment(data=dx, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+           scale_x_continuous(breaks = round(seq(x1,x2, length.out = length_grid),0),
+                              labels = every_nth(round(seq(x1,x2,length.out =length_grid),0), 6,
+                                                 inverse = TRUE)))+
+      list(geom_segment(data=dy, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+           scale_y_continuous(breaks=round(seq(y1,y2,length.out = length_grid),1),
+                              labels = every_nth(round(seq(y1,y2,length.out = length_grid),1), 6,
+                                                 inverse = TRUE)))+
+      theme(plot.background = element_rect(fill = "transparent",colour = NA),
+            panel.background = element_rect(fill = "transparent",colour = NA))
+
+  }
+
   save_plot <- function(name){
-    pdf(paste0(save_path, name,".pdf"), width=6, height=6) 
+    pdf(file.path(save_path, paste0(name,".pdf")), width=6, height=6) 
     print(p)
     dev.off()
   }
@@ -464,13 +545,13 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
   }
   
   plot_year_asfr <- function(year, obs, sim, ylims = c(0, ymax),
-                             colour = colour, save_year_p = save){
+                             colour = colour, save_year_p = save, title = F){
     
     get_year <- function(year, dat){
       extract <- as.data.frame(as.numeric(dat[as.character(year),]))
       return(extract)
     } 
- 
+    
     obs <- get_year(year, obs)
     obs$Year <- 15:49
     
@@ -478,7 +559,7 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
     ldat <- long_dat(sim, obs, nsim, ysd = 0, iniY = 15, endY = 49)
     
-    p_year <- p_obs_sim(ldat,
+    p_year <- p_obs_sim(dat = ldat,
                         x1 = 15,
                         x2 = 49,
                         y1 = ylims[1],
@@ -487,7 +568,47 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
     p_year <- p_year + labs(y="f(x)",x = "Age")
     
-    if(year != 1970){
+    if(title){ # Put the year in the title
+      
+      p_year <- p_year + ggtitle(paste0("Year: ", year))
+      
+    }
+    
+    if(interval){  
+      
+      intervals <- intervals_function(res_dir, post_dat,
+                                      element = "asfr", year_asfr = year,
+                                      iniY = iniY,
+                                      endY = endY,
+                                      alpha_int = alpha_int, eps = 0.1) 
+      
+      colnames(intervals) <- 15:49
+      intervals <- t(intervals)
+      
+      
+      ldat$int_inf <- NA
+      ldat$int_sup <- NA
+      
+      
+      for (i in 1:nrow(ldat)) {
+        
+        if (ldat$type[i] == 'Mean of simulations'){
+          
+          ldat$int_inf[i] <- as.numeric(round(intervals[match(ldat$year[i], rownames(intervals)),2],4))
+          ldat$int_sup[i] <- as.numeric(round(intervals[match(ldat$year[i], rownames(intervals)),3],4))
+          
+        }
+        
+      }
+      
+      p_year <- p_year + geom_ribbon(aes(ymin = ldat$int_inf, 
+                                         ymax = ldat$int_sup), 
+                                     fill = "firebrick", alpha = 0.1, show.legend = F)
+      
+      
+    } # USES YEAR from plot_YEAR
+    
+    if(year != 1961){
       p_year <- p_year + theme(legend.position = "none")
     }
     
@@ -498,15 +619,18 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     }
     return(p_year)
   }
-
-  if(asfr | unplanned | unwanted | desired){
-    
-    source("../estimation/get_obs.R")
-    source("../estimation/get_sim.R")
-    obs_set <- get_obs(country, ysd)
-    sim_set <- get_sim(res_dir, iniY, endY, nsim, obs_set, asfr, unplanned, unwanted, desired, all_sim = T)
-    
-  }
+  
+  
+  # get data
+  source(file.path("..","estimation","get_obs.R"))
+  source(file.path("..","estimation","get_sim.R"))
+  source(file.path("..","estimation","intervals_function.R"))
+  
+  obs_set <- get_obs(country, ysd)
+  sim_set <- get_sim(res_dir, iniY, endY, nsim,
+                     obs_set, asfr, unplanned,
+                     unwanted, desired, all_sim = T)
+  
   
   if(asfr){
     
@@ -525,6 +649,8 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     print(p)
   }
   
+  #*************************************************************************************************************  
+    
   if(tfr){
     # Obs
     obs <- read.table(file.path(out_path, "tfr_hfd.txt"),
@@ -538,23 +664,62 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
     ldat <- long_dat(sim, obs, nsim, ysd = ysd, iniY = iniY, endY = endY-1)
     
-    ldat <- ldat[ldat$year >= 1970,]
+    ldat <- ldat[ldat$year >= 1939,]
     
-    p <- p_obs_sim(ldat,
-                   y1 = 1.45,
-                   y2 = 2.8,
+    if(!fore){
+      
+      ldat <- ldat[ldat$year <= last_obs_year,]
+      name <- paste0("tfr")
+    }else{
+      name <- paste0("tfr","_", "fore")
+    }
+    
+    p <- p_obs_sim(dat = ldat,
+                   y1 = 0.5,
+                   y2 = 3.5,
                    x1 = min(ldat$year)-1,
                    x2 = max(ldat$year)+1,
                    colour = colour)
     
     p <- p + xlab("Year") + ylab("Total Fertility Rates")
     
+    if(interval){
       
-    if(save){ save_plot("tfr") }
+      intervals <- intervals_function(res_dir, post_dat,
+                                      element = "tfr", 
+                                      iniY = iniY,
+                                      endY = endY-1,
+                                      alpha_int = alpha_int)
+      
+      ldat$int_inf <- NA
+      ldat$int_sup <- NA
+      
+      
+      for (i in 1:nrow(ldat)) {
+        
+        if (ldat$type[i] == 'Mean of simulations'){
+          
+          ldat$int_inf[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),3],4))
+          ldat$int_sup[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),4],4))
+          
+        }
+        
+      }
+      
+      
+      p <- p + geom_ribbon(aes(ymin = ldat$int_inf, 
+                               ymax = ldat$int_sup), 
+                           fill = "firebrick", alpha = 0.1, show.legend = F)
+      
+    }
+      
+    if(save){save_plot(name)}
     
     print(p)
     
   } 
+    
+  #*************************************************************************************************************  
   
   if(ccf){
     # sim
@@ -568,51 +733,122 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     names(obs)[1] <- "Year" 
     ldat <- long_dat(sim, obs, nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
     
+    x1 <- 1925
+    ldat <- ldat[ldat$year>=x1,]
+    
+    if(!fore){
+      
+      ldat <- ldat[ldat$year <= last_obs_year-50-1,]
+      name <- paste0("ccf")
+    }else{
+      name <- paste0("ccf","_", "fore")
+    }
+    
+    
     p <- p_obs_sim(ldat,
-                   x1 = 1928,
-                   x2 = endY-50,
+                   x1 = min(ldat$year)-1,
+                   x2 = max(ldat$year)+1,
                    y1 = 1,
                    y2 = 3.5,
                    colour = colour)
     
     p <- p + xlab("Cohort") + ylab("Completed Cohort Fertility")
     
-    if(save){ save_plot("ccf") }
+    
+    if(interval){
+      
+      intervals <- intervals_function(res_dir, 
+                                      post_dat,
+                                      element = "cohort",
+                                      col = 2,
+                                      iniY = iniY,
+                                      endY = endY-50-1,
+                                      alpha_int = alpha_int)
+      
+      ldat$int_inf <- NA
+      ldat$int_sup <- NA
+      
+      
+      for (i in 1:nrow(ldat)) {
+        
+        if (ldat$type[i] == 'Mean of simulations'){
+          
+          ldat$int_inf[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),3],4))
+          ldat$int_sup[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),4],4))
+          
+        }
+        
+      }
+      
+      
+      p <- p + geom_ribbon(aes(ymin = ldat$int_inf, 
+                               ymax = ldat$int_sup), 
+                           fill = "firebrick", alpha = 0.1, show.legend = F)
+      
+    }
+    
+    if(save){ save_plot(name) }
     
     print(p)
+    
+    if(scenario){
+      
+      scenario_path <- file.path("results",country,"scenario")
+      res_names_sc <- list.files(scenario_path, "RData", full.names = TRUE)
+      sim_sc <- sapply(res_names_sc, function(x) readRDS(x)["cohort"])
+      sim_sc_short <- lapply(sim_sc, function(x) x[x$year>=1970,])
+      sim_sc_short <- as.data.frame(do.call("cbind", sim_sc_short))
+      sc_dat <- sim_sc_short[,c(1,seq(2,nsim*2,2))]
+      sc_dat$mean <- apply(sc_dat[2:nsim], 1, mean)
+      
+      names(sc_dat) <- c("year", rep("scenario", nsim),
+                          "Mean scenario")
+      for(i in 2:(nsim+1)){
+        colnames(sc_dat)[i] <- paste0(names(sc_dat)[i],"_", i-1)
+      }
+      
+      sc_dat_long <- reshape(sc_dat, dir = "long", idvar = "year",
+                          names(sc_dat)[c(2:ncol(sc_dat))], v.names = "vals",
+                          timevar = "type", times = names(sc_dat)[c(2:ncol(sc_dat))])
+      sc_dat_long$mean <- ifelse(sc_dat_long$type %in% c("Mean scenario"), 1, 0)
+      
+      sc_dat_long$r_type <- ifelse(sc_dat_long$type %in% c("Mean scenario", "scenario",
+                                                           "Mean forecast", "forecasted"), 0, 1)
+
+      
+      ldat_sim <- ldat[ldat$type %in% unique(ldat$type)[1:(nsim+1)],]
+      ldat_sim <- ldat_sim[ldat_sim$year %in% 1970:1984,]
+      ldat_sim$type <- rep(names(ldat_sim)[2:7], each = length(1970:1984))  
+      ldat_obs <- ldat[ldat$type %in% unique(ldat$type)[nsim+2],]
+      
+      long_dat_all <- rbind(ldat_obs, ldat_sim, sc_dat_long)
+      long_dat_all$cat <- c(rep(0, nrow(ldat_obs)),
+                            rep(1, nrow(ldat_sim)),
+                            rep(2, nrow(sc_dat_long)))
+      
+      p <- p_obs_fore_sc(long_dat_all,
+                          x1 = 1925,
+                          x2 = 1985,
+                          y1 = 0,
+                          y2 = 3.2,
+                          lbs = c("Observed","Forecasted", "Scenario"),
+                          lbs_cats = c("", ""),
+                          leg_pos = c(0.5, 0.8),
+                          colour = colour) 
+
+      
+      if(save){ save_plot("ccf_scenario") }
+      
+      print("here")
+      print(p)
+      
+    }
+    
+   
   }
-  
-  if(ccf_match){
-    # sim
-    sim <- sapply(res_names, function(x) readRDS(x)["cohort"])
-    sim <- lapply(sim, function(x) {names(x) <- c("Year","val")
-                                    return(x)})
-    # obs
-    obs <- read.table(file.path(out_path,"ccf_hfd.txt"), skip = 2, header = T,
-                      stringsAsFactors = F)[1:2]
-    obs$CCF<- ifelse(obs$CCF==".", NA, obs$CCF)
-    obs$CCF <- as.numeric(obs$CCF)
-    names(obs)[1] <- "Year" 
-    obs <- obs[obs$Year <= 1968,]
-    sim <- lapply(sim, function(x) merge(x, obs))
-    sim <- lapply(sim, function(x) x[,2])
+
+  #*************************************************************************************************************  
     
-    ldat <- long_dat(sim, obs, nsim, ysd = obs$Year[1], iniY = obs$Year[1], endY = endY-50-1)
-    
-    p <- p_obs_sim(ldat,
-                   x1 = obs$Year[1]-1,
-                   x2 = endY-50,
-                   y1 = 1,
-                   y2 = 3.5,
-                   colour = colour)
-    
-    p <- p + xlab("Cohort") + ylab("Completed Cohort Fertility")
-    
-    if(save){ save_plot("ccf_match") }
-    
-    print(p)
-  }
-  
   if(ccf_edu){
     
     sim <- list()
@@ -621,14 +857,15 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
       sim[[1+i]] <- sapply(res_names, function(x) readRDS(x)[paste0("cohort", i)])
     }
     
-    sim <- lapply(sim, function(x) lapply(x, function(j) j[,2]))
-    sim_all <- lapply(sim, long_dat, obs = F,
-                      nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
+    
+    sim_vals <- lapply(sim, function(x) lapply(x, function(j) j[,2]))
+    sim_all <- lapply(sim_vals, long_dat, obs = F,
+                      nsim, ysd = iniY, iniY = iniY, endY = max(sim[[1]][[1]]$year))
     
     sim <- do.call("rbind", sim_all)
     sim$cat <- rep(0:3, each = nrow(sim_all[[1]]))
     
-    p <- p_sim_cats(sim, ylim = c(1, 4), xlim = c(1928, 1968),
+    p <- p_sim_cats(sim, ylim = c(1, 4), xlim = c(1928, 1970),
                     lbs = c("Simulated", "Mean of simulations"),
                     lbs_cats = c("Mean", "Low Edu", "Med Edu", "High Edu"),
                     leg_pos = c(0.8,0.7),
@@ -643,6 +880,8 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
   }
   
+  #*************************************************************************************************************
+    
   if(ccf_edu_obs){
     
     obs <- read.table(file.path(out_path,"ccf_edu"), header = T) 
@@ -657,19 +896,27 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
       sim[[1+i]] <- sapply(res_names, function(x) readRDS(x)[paste0("cohort", i)])
     }
     
-    sim <- lapply(sim, function(x) lapply(x, function(j) j[,2]))
+    sim_vals <- lapply(sim, function(x) lapply(x, function(j) j[,2]))
     sim_all <- list()
-    sim_all[[1]] <- long_dat(sim[[2]], obs = obs1, nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
-    sim_all[[2]] <- long_dat(sim[[4]], obs = obs2, nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
+    sim_all[[1]] <- long_dat(sim_vals[[2]], obs = obs1, nsim,
+                             ysd = iniY, iniY = iniY, endY = max(sim[[1]][[1]]$year))
+    sim_all[[2]] <- long_dat(sim_vals[[4]], obs = obs2, nsim,
+                             ysd = iniY, iniY = iniY, endY = max(sim[[1]][[1]]$year))
     
-    sim <- do.call("rbind", sim_all)
-    sim$cat <- rep(0:1, each = nrow(sim_all[[1]]))
+    sim_all_b <- do.call("rbind", sim_all)
+    sim_all_b$cat <- rep(0:1, each = nrow(sim_all[[1]]))
     
-    p <- p_sim_obs_cats(sim,
+    if(!fore){
+      
+      sim_all_b <- sim_all_b[sim_all_b$year <= last_obs_year-50-1,]
+      
+    }
+    
+    p <- p_sim_obs_cats(sim_all_b,
                         y1 = 1,
                         y2 = 3.5,
-                        x1 = 1968,
-                        x2 = 1928,
+                        x1 = max(sim_all_b$year),
+                        x2 = min(sim_all_b$year),
                         lbs = c("Simulated","Observed", "Mean of simulations"),
                         lbs_cats = c("Edu1", "Edu3"),
                         leg_pos = c(0.5, 0.8),
@@ -688,62 +935,9 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     print(p)
     
   }
-  
-  if(ccf_edu_obs_match){
     
-    obs <- read.table(file.path(out_path,"ccf_edu"), header = T) 
-    names(obs)[1] <- "Year"
-    obs <- obs[obs$Year <= 1968,]
-    
-    obs1 <- obs[,c("Year","CFR.1")] 
-    obs2 <- obs[,c("Year","CFR.3")] 
-    
-    sim <- list()
-    sim[[1]] <- sapply(res_names, function(x) readRDS(x)["cohort"])
-    for (i in 1:3) {
-      sim[[1+i]] <- sapply(res_names, function(x) readRDS(x)[paste0("cohort", i)])
-    }
-    
-    sim <- lapply(sim, function(x) lapply(x, function(j) {names(j) <- c("Year", "val")
-                                                          return(j)}))
-    sim <- lapply(sim, function(x) lapply(x, function(j) merge(j, obs)))
-    sim <- lapply(sim, function(x) lapply(x, function(j) j[,2]))
-    sim_all <- list()
-    sim_all[[1]] <- long_dat(sim[[2]], obs = obs1, nsim, ysd = obs$Year[1],
-                             iniY = obs$Year[1], endY = endY-50-1)
-    sim_all[[2]] <- long_dat(sim[[4]], obs = obs2, nsim,
-                             ysd = obs$Year[1], iniY = obs$Year[1],
-                             endY = endY-50-1)
-    
-    sim <- do.call("rbind", sim_all)
-    sim$cat <- rep(0:1, each = nrow(sim_all[[1]]))
-    
-    p <- p_sim_obs_cats(sim,
-                        x1 = obs$Year[1]-1,
-                        x2 = 1970,
-                        y1 = 1,
-                        y2 = 3.5,
-                        lbs = c("Simulated","Observed", "Mean of simulations"),
-                        lbs_cats = c("Edu1", "Edu3"),
-                        leg_pos = c(0.5, 0.8),
-                        colour = colour) 
-    p <- p + annotate(geom="text", x=1968, y=2.2,
-                      label="Primary", 
-                      color="black", 
-                      size = 4) + 
-      annotate(geom="text", x=1968, y=1.8,
-               label="Tertiary",
-               color="black",
-               size = 4)
-    
-    p <- p + xlab("Cohort") + ylab("Completed Cohort Fertility")
-    
-    if(save){save_plot("ccf_edu_obs_match") }
-    
-    print(p)
-    
-  }
-  
+  #*************************************************************************************************************  
+      
   if(mab){
     # Obs
     obs <- read.table(file.path(out_path,"mab_hfd.txt"), 
@@ -756,23 +950,66 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     # sim
     sim <- sapply(res_names, function(x) readRDS(x)["meanAgeBirth"])
     
-    ldat <- long_dat(sim, obs, nsim, ysd = min(obs$Year), iniY = iniY, endY = endY-1)
+    ldat <- long_dat(sim, obs, nsim, ysd = 1960, iniY = iniY, endY = endY-1)
+    
+    if(!fore){
+      
+      ldat <- ldat[ldat$year <= last_obs_year-2,]
+      name <- paste0("mab")
+    }else{
+      name <- paste0("mab","_", "fore")
+    }
 
     p <- p_obs_sim(ldat,
-                   x1 = min(obs$Year)-1,
-                   x2 = endY,
-                   y1 = 20,
-                   y2 = 40,
-                   colour = colour)
+                   x1 = min(ldat$year)-1,
+                   x2 = max(ldat$year)+1,
+                   y1 = 22,
+                   y2 = 37,
+                   colour = colour,
+                   yaxe_tick = 1)
     
     p <- p + xlab("Year") + ylab("Age")
     
-    if(save){ save_plot("mab") }
+    
+    if(interval){
+      
+      intervals <- intervals_function(res_dir,
+                                      post_dat,
+                                      element = "meanAgeBirth", 
+                                      iniY = iniY,
+                                      endY = endY-1,
+                                      alpha_int = alpha_int)
+      
+      ldat$int_inf <- NA
+      ldat$int_sup <- NA
+      
+      
+      for (i in 1:nrow(ldat)) {
+        
+        if (ldat$type[i] == 'Mean of simulations'){
+          
+          ldat$int_inf[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),3],4))
+          ldat$int_sup[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),4],4))
+          
+        }
+        
+      }
+      
+      
+      p <- p + geom_ribbon(aes(ymin = ldat$int_inf, 
+                               ymax = ldat$int_sup), 
+                           fill = "firebrick", alpha = 0.2, show.legend = F)
+      
+    }
+    
+    if(save){ save_plot(name) }
     
     print(p)
     
   }
   
+  #*************************************************************************************************************
+    
   if(mabs){
     # Obs
     obs <- read.table(file.path(out_path,"mab_parity_hfd.txt"), 
@@ -797,8 +1034,8 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     p <- p_sim_obs_cats(sim,
                         y1 = 20,
                         y2 = 40,
-                        x1 = 1958,
-                        x2 = 2018,
+                        x1 = min(sim$year)-1,
+                        x2 = max(sim$year)+1,
                         lbs = c("Simulated","Observed", "Mean of simulations"),
                         lbs_cats = c("MAB1", "MAB1"),
                         leg_pos = c(0.3, 0.8),
@@ -821,10 +1058,81 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
   }
   
+  #*************************************************************************************************************  
+    
+  if(mas){
+    # Obs
+    obs <- read.table(file.path(out_path,"mab_parity_hfd.txt"), 
+                      skip = 2, header = T,
+                      stringsAsFactors = F) 
+    
+    obs1 <- obs[,c("MAB1","Year")] 
+    obs2 <- obs[,c("MAB2","Year")]
+    
+    obs3 <- read.table(file.path(out_path,"mab_hfd.txt"), 
+                      skip = 2,
+                      header = T,
+                      stringsAsFactors = F) 
+    
+    obs3 <- obs3[,1:2]
+    
+    # sim
+    sim1 <- sapply(res_names, function(x) readRDS(x)["meanAgeBirth1"])
+    sim2 <- sapply(res_names, function(x) readRDS(x)["meanAgeBirth2"])
+    sim3 <- sapply(res_names, function(x) readRDS(x)["meanAgeUnion"])
+    
+    sim_all <- list()
+    sim_all[[1]] <- long_dat(sim1, obs = obs1, nsim, ysd = min(obs$Year), iniY = iniY, endY = endY-1)
+    sim_all[[2]] <- long_dat(sim2, obs = obs2, nsim, ysd = min(obs$Year), iniY = iniY, endY = endY-1)
+    sim_all[[3]] <- long_dat(sim3, obs = obs3, nsim, ysd = min(obs3$Year), iniY = iniY, endY = endY-1)
+    
+    
+    sim <- do.call("rbind", sim_all)
+    cat1 <- rep(0:1, each = nrow(sim_all[[1]]))
+    sim$cat <- c(cat1, rep(2, nrow(sim_all[[3]])))
+    
+    p <- p_sim_obs_cats(sim,
+                        y1 = 20,
+                        y2 = 40,
+                        x1 = min(sim$year)-1,
+                        x2 = max(sim$year)+1,
+                        lbs = c("Simulated","Observed", "Mean of simulations"),
+                        lbs_cats = c("MAB1", "MAB2", "MAU"),
+                        leg_pos = c(0.3, 0.8),
+                        colour = colour)
+    
+    p <- p + annotate(geom="text", x=2014, y=30,
+                      label="First Births",
+                      color="black",
+                      size = 4) + 
+      annotate(geom="text", x=2014, y=32.5,
+               label="Second Births",
+               color="black",
+               size = 4) +
+      annotate(geom="text", x=2014, y=24,
+               label="Mean Age union",
+               color="black",
+               size = 4)
+    
+    p <- p + xlab("Year") + ylab("Mean Age at Birth")
+    
+    if(save){save_plot("mas")}
+    
+    print(p)
+    
+  }
+  
+  #*************************************************************************************************************  
+    
   if(unplanned){
     
-    p <- shape_plot(nsim,obs_set$obs_unplanned, sim_set$sim_unplanned,
-                    ylims = c(0,0.6), colour = colour, d_fit = F)
+    sim <- sim_set$sim_unplanned
+    
+    ldat <- long_dat(sim, obs = F, nsim, ysd = 0, iniY = iniY, endY = endY-1)
+    
+    p <- p_sim(ldat, ylim = c(0,1), xlim= c(1958,endY), colour = colour)
+
+    p <- p + xlab("Year") + ylab("Proportion Unplanned Births")
     
     if(save){ save_plot("unplanned") }
     
@@ -832,6 +1140,8 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
   }
   
+  #*************************************************************************************************************  
+    
   if(unwanted){
     
     p <-  shape_plot(nsim, obs_set$obs_unwanted, sim_set$sim_unwanted,
@@ -843,21 +1153,73 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
   }
   
+  #*************************************************************************************************************
+    
   if(desired){
     
-    p <-  shape_plot_sim(nsim = 4, sim =  sim_set$sim_desired[1:4],
-                     x1 = 1960,
-                     x2 = endY+1,
-                     y1 = 2,
-                     y2 = 2.7, colour = colour)
+    obs <- as.data.frame(obs_set$obs_desired)
+    obs$Year <- as.numeric(rownames(obs))
+    
+    sim <- sim_set$sim_desired
+    
+    ldat <- long_dat(sim, obs, nsim, ysd = 1995, iniY = iniY, endY = endY-1) # CAMBIAR YSD
+    
+    if(!fore){
+      
+      ldat <- ldat[ldat$year <= last_obs_year-1,]
+      name <- paste0("desired")
+      
+    }else{
+      name <- paste0("desired","_", "fore")
+    }
+    
+    p <- p_obs_sim(ldat,
+                   y1 = 0.5,
+                   y2 = 3.5,
+                   x1 = min(ldat$year)-1,
+                   x2 = max(ldat$year)+1,
+                   colour = colour)
+    
     
     p <- p + xlab("Year") + ylab("Desired Family Size")
+
+    if(interval){
+      
+      intervals <- intervals_function(res_dir, post_dat,
+                                      element = "dKids_all",
+                                      iniY = iniY, 
+                                      endY = endY-1,
+                                      alpha_int = alpha_int)
+      
+      ldat$int_inf <- NA
+      ldat$int_sup <- NA
+      
+      
+      for (i in 1:nrow(ldat)) {
+        
+        if (ldat$type[i] == 'Mean of simulations'){
+          
+          ldat$int_inf[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),3],4))
+          ldat$int_sup[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),4],4))
+          
+        }
+        
+      }
+      
+      
+      p <- p + geom_ribbon(aes(ymin = ldat$int_inf, 
+                               ymax = ldat$int_sup), 
+                           fill = "firebrick", alpha = 0.2, show.legend = F)
+      
+    }
     
-    if(save){save_plot("desired") }
+    if(save){save_plot(name)}
     
     print(p)
     
   }
+    
+  #*************************************************************************************************************
   
   if(gap){
     
@@ -872,6 +1234,8 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     print(p)
     
   }
+    
+  #*************************************************************************************************************
   
   if(gap_edu){
     
@@ -886,7 +1250,7 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     sim <- do.call("rbind", sim_all)
     sim$cat <- rep(0:3, each = nrow(sim_all[[1]]))
     
-    p <- p_sim_cats(sim, ylim = c(-1.5, 0.5), xlim = c(1958, 2018),
+    p <- p_sim_cats(sim, ylim = c(-1.5, 0.5), xlim = c(1958, endY),
                     lbs = c("Simulated", "Mean of simulations"),
                     lbs_cats = c("Mean", "Low Edu", "Med Edu", "High Edu"),
                     leg_pos = c(0.7, 0.3),
@@ -897,6 +1261,8 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     print(p)
     
   }
+    
+  #*************************************************************************************************************
   
   if(css){
     
@@ -910,22 +1276,26 @@ plot_out <- function(res_dir, country, iniY, endY, nsim, asfr = T, tfr = T, ccf 
     
     # sim
     sim <- lapply(res_names, function(x) readRDS(x)["childless"])
-    sim <- sapply(sim, function(x) lapply(x, function(j) j[-c(1:10),2]*100))
+    sim <- sapply(sim, function(x) lapply(x, function(j) j[-c(1:20),2]*100))
     
-    ldat <- long_dat(sim, obs, nsim, ysd = 1910, iniY = 1910, endY = endY-50-1)
+    ldat <- long_dat(sim, obs, nsim, ysd = 1930, iniY = 1920, endY = endY-50-1)
     
-    p <- p_obs_sim(ldat,
-                   y1 =0,
-                   y2 = 100,
+    p <- p_obs_sim(dat = ldat,
+                   y1 =10,
+                   y2 = 30,
                    x1 = 1930,
                    x2 = endY-50,
-                   colour = colour)
+                   colour = colour,
+                   yaxe_tick = 1)
     
     if(save){save_plot("css") }
     
     print(p)
     
   }
+  
+  #*************************************************************************************************************
+
   
   
 }

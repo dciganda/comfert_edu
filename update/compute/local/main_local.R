@@ -2,39 +2,25 @@
 p <- c("parallel", "data.table", "mlegp", "splines", "ggplot2", "survival") 
 invisible(lapply(p, library, character.only = TRUE))
 
-start <- Sys.time()
-
-source(file.path("..","estimation","get_new_points.R"))
-source(file.path("..","estimation","parallel_comfert.R"))
-source(file.path("..","estimation","optimize_comfert.R"))
-source(file.path("..","estimation","save_res.R"))
-source(file.path("..","analysis","plot_out.R"))
-source(file.path("..","analysis","duration_models.R"))
-source(file.path("..","analysis","kravdal_coeffs.R"))
-source(file.path("..","analysis","data_prep.R"))
-
+# HYPERPARAMETERS ####
 country <- "NO" # country on which simulations are performed 
-iniY <- 1910 # years for which the simulations are performed
-endY <- 2019 # years for which the simulations are performed
-ini_c <- 150 # size of the initial birth cohorts of the model (affects computation times - 50 takes 10-15 minutes, but should be closer to 1000 for smooth results)
-n0 <- 40 # size of initial sample of param combinations
-nsim <- 2 # nr of simulations in each evaluated point - this will produce a cluster of size n0*nsim
-ne <- 20 # nr of new evaluations at each iteration of the bayes opt. algorithm
-iter <- 2     # nr of iterations
+iniY <- 1910    # years for which the simulations are performed
+endY <- 2019    # years for which the simulations are performed
+ini_c <- 1000    # size of the initial birth cohorts of the model (affects computation times - 50 takes 10-15 minutes, but should be closer to 1000 for smooth results)
+n0 <- 40        # size of initial sample of param combinations
+nsim <- 2       # nr of simulations in each evaluated point - this will produce a cluster of size n0*nsim
+ne <- 20        # nr of new evaluations at each iteration of the bayes opt. algorithm
+iter <- 10       # nr of iterations
 N <- ne*iter    # total nr of evaluations = n0+N
 
 weights <- c(asfr = .5,
-             unplanned = 0.00,
-             unwanted = 0.00,
+             unplanned = 0.0,
+             unwanted = 0.0,
              desired = .0,
+             ccf = .0,
              ccf_edu = .5) # weights for the computation of the MSE
 
-# directory to store results
-res_dir <- file.path("results", paste(country),
-                     paste0("n_sim_", nsim),
-                     paste0("ini_c_", ini_c),
-                     "results", paste(weights, collapse = "_"))
-
+# PRIORS ####
 priors <- data.frame(psi = c(1972, 1979),           # Year inflection point diffusion of contraception.
                      upsilon = c(0.15, 0.55),       # Maximum Risk Unplanned births
                      rho = c(0.025, 0.050),         # minimum risk of unplanned birth
@@ -48,7 +34,7 @@ priors <- data.frame(psi = c(1972, 1979),           # Year inflection point diff
                      alpha = c(0.03, 0.16)          # difference in contraceptive use by edu
 )
 
-# -- fixed parameters --
+# FIXED PARAMETERS ####
 fix_p <- list(lambda = 2.5e-08,                     # rate decrease penalty intention after birth
               sd_lnrm = 0.16,                       # stdrd dev lognorm
               gamma = 38,                           # Fecundability age
@@ -64,34 +50,56 @@ fix_p <- list(lambda = 2.5e-08,                     # rate decrease penalty inte
                         length.out = (endY+1)-1940))
 )
 
-params <- get_new_points(priors, n=n0) # Initial sample of parameter combinations  
+# RUN BAYES ####
+source(file.path("..","estimation","run_bayes.R"))
 
-# Compute model at initial parameter set 
-output <- parallel_comfert(params = params[rep(seq_len(nrow(params)), each = nsim),],
-                           country = country,
-                           ini_c = ini_c,
-                           iniY = iniY,
-                           endY = endY) 
-
-# Save Results
-save_res(output)
-
-# Bayesian optimization
-optimize_comfert(res_dir, country, iniY, endY, ini_c, n0, nsim,
-                 N, ne, params, priors, weights) 
-
+start <- Sys.time()
+run_bayes(pop, iniY, endY, ini_c,
+          n0, nsim, ne, iter, N,
+          weights, priors, fix_p)
 end <- Sys.time()
-print(start-end)
+print(end-start)
+
+# ANALYSIS ####
+source(file.path("..","analysis","check_paramset.R"))
+source(file.path("..","analysis","plot_out.R"))
+global_path <- file.path("results", paste(country),
+                         paste0("n_sim_", nsim),
+                         paste0("ini_c_", ini_c),
+                         paste(weights, collapse = "_"))
 
 # Get posterior distribution
-post <- read.csv(file.path(res_dir, "post", "posterior.csv"))[-1,] 
+post <- readRDS(file.path(global_path, "post", "posterior.rds"))[-(1:(n0)),]
 post[order(post$mse),]
-opt_res_dir <- check_paramset(rank = 1)
+opt_res_dir <- check_paramset(res_dir = global_path, rank = 1)
 
 # Plot outcomes
-plot_out(opt_res_dir, country, iniY, endY, nsim, asfr = T, colour = T, save = F)
+plot_out(res_dir = opt_res_dir,
+         post_dat = post,
+         country = country,
+         iniY = iniY,
+         endY = endY,
+         nsim = nsim,
+         weights = weights,
+         unplanned = F,
+         unwanted = F,
+         desired = T,
+         tfr = T,
+         ccf = T,
+         mab = T,
+         ccf_edu_obs = F,
+         ccf_compare = F,
+         css = T,
+         asfr = F,
+         gap = F,
+         gap_edu = F,
+         colour = T, 
+         interval = T,
+         alpha_int = 0.05,
+         last_obs_year = 2019,
+         save = F)
 
-# compute trajectories
+# SCENARIOS ####
 source(file.path("..","sim_trajectories","compute_trajectories.R"))
 ini_c <- 2500
 param <- post[order(post$mse),!names(post)%in%c("mse", "modName")][1,]

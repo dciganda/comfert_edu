@@ -22,7 +22,7 @@ global_path <- file.path("..","results",
                          weights)
 
 # get data.frame of design points
-param_df <- read.csv(file.path(global_path,"param_sample","params.csv"))
+param_df <- read.csv(file.path(global_path,"ini_param_sample","params.csv"))
 
 # path where results will be saved
 resultsPath <- file.path(global_path,"results", paste0("param_set_", paramSetIndex))

@@ -525,7 +525,7 @@ comfert <- function(seed_val, param, parallel_run = F, cluster = F){
                 gap_pos = gap_pos, gap_pos_e1 = gap_pos_e1, gap_pos_e2 = gap_pos_e2, gap_pos_e3 = gap_pos_e3, 
                 gap_neg = gap_neg, gap_neg_e1 = gap_neg_e1, gap_neg_e2 = gap_neg_e2, gap_neg_e3 = gap_neg_e3, 
                 cohortEduLow = cohortEduLow, cohortEduMed = cohortEduMed, cohortEduHigh = cohortEduHigh, exposure = exposure,
-                cohortBirths = cohortBirths, modName = modName, mean_age_union = mean_age_union, aux_mau = aux_mau, 
+                cohortBirths = cohortBirths, mean_age_union = mean_age_union, aux_mau = aux_mau, 
                 aux_myedu = aux_myedu, aux_myedu_2 = aux_myedu_2, mau_cohort = mau_cohort, one_child = one_child,
                 two_children = two_children, three_plus_children = three_plus_children, prop_w_trend = prop_w_trend)
   }

@@ -16,8 +16,6 @@ final_sample <- data.frame(mapped_sample)
 
 colnames(final_sample) <- colnames(priors)
 
-final_sample$modName <- "regular"
-
 return(final_sample)
 
 }

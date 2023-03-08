@@ -7,6 +7,8 @@ endY <- as.numeric(commandArgs(TRUE)[6])
 ne <- as.numeric(commandArgs(TRUE)[7])
 nt <- as.numeric(commandArgs(TRUE)[8])
 
+cat("\n computing mse of new evaluations...\n")
+
 source("get_obs.R")
 source("get_sim.R")
 source("compute_mse.R")
@@ -17,7 +19,7 @@ global_path <- file.path("..","results", paste(country),
 
 res_dir <- file.path(global_path, "results")
 
-params <- read.csv(file.path(global_path,"param_sample","params.csv"))
+params <- read.csv(file.path(global_path,"ini_param_sample","params.csv"))
 posterior <- read.csv(file.path(global_path,"post","posterior.csv"))
 
 new_evals <- readRDS(file.path(global_path,"new_evaluations","new_evals.rds"))
@@ -43,21 +45,20 @@ sim <- get_sim(res_dirs_ne, iniY, endY, nsim, obs,
                unplanned = length(obs$obs_unplanned)>0, 
                unwanted = length(obs$obs_unwanted)>0,
                desired = length(obs$obs_desired)>0,
+               ccf = length(obs$obs_ccf)>0,
                ccf_edu = length(obs$obs_ccf_edu)>0) # simulated data
 
 weights_aux <- as.numeric(sapply(strsplit(weights, "_"), function(x) x[1:length(x)]))
 weights_num <- c(asfr = weights_aux[1], unplanned = weights_aux[2],
                  unwanted = weights_aux[3], desired = weights_aux[4],
-                 ccf_edu = weights_aux[5])
+                 ccf = weights_aux[5], ccf_edu = weights_aux[6])
 
-cat("\n computing mse of new points... \n")
 new_eval_mse <- as.data.frame(new_evals)
 new_eval_mse$mse <- sapply(sim, compute_mse, obs, weights_num)  
 
 posterior <- rbind(posterior, new_eval_mse)
-params <- rbind(params, new_evals)
 
 cat("\n saving results.. \n")
 write.csv(posterior, file.path(global_path,"post","posterior.csv"), row.names = F)
-write.csv(params, file.path(global_path,"param_sample","params.csv"), row.names = F)
+
 

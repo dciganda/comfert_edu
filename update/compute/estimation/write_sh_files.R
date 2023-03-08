@@ -75,7 +75,7 @@ cat("#!/bin/sh",
     "#SBATCH --mem=9000",
     paste("#SBATCH -p", partition), "\n",
     paste0(ml),
-    "Rscript store_new_evals.R $COUNTRY $N_SIM $INI_C $WEIGHTS $INI_YEAR $END_YEAR $NE $NT",
+    "Rscript store_new_evals.R >> ../out_files/bo_out.Rout 2>&1 $COUNTRY $N_SIM $INI_C $WEIGHTS $INI_YEAR $END_YEAR $NE $NT",
     fill = 1)
 sink()
 

@@ -1,5 +1,9 @@
 
-parallel_comfert <- function(params, country, ini_c, iniY, endY) {
+parallel_comfert <- function(params,
+                             country,
+                             ini_c, 
+                             iniY,
+                             endY) {
 
   path_to <- function(file){
     file.path("..","data",country,"in", file)}
@@ -10,7 +14,7 @@ parallel_comfert <- function(params, country, ini_c, iniY, endY) {
   
   if (file.exists(o_file)){file.remove(o_file)} 
   
-  cl <- makeCluster(nrow(params), type = "PSOCK", outfile = "pc.txt")
+  cl <- makeCluster(nrow(params), type = "PSOCK", outfile = paste0("pc_",unname(Sys.info()[4]),".txt"))
   
   clusterEvalQ(cl, library(lubridate))
   clusterEvalQ(cl, library(data.table))
@@ -30,6 +34,7 @@ parallel_comfert <- function(params, country, ini_c, iniY, endY) {
   })
   
   s <- Sys.time()
+  
 
   output <- parLapply(cl, 1:nrow(params), function (x) comfert(seed_val = x,
                                                                params[x,],

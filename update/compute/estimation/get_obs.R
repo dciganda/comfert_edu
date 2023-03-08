@@ -49,7 +49,7 @@ get_obs <- function(country, ysd){
     }else{
       obs_1 <- read.table(file_ideal, sep = ",", skip = 0, header = T)
     }
-  obsD_3 <- predict(smooth.spline(obs_1[,1], obs_1[,2], spar = 0.5),
+  obsD_3 <- predict(smooth.spline(obs_1[,1], obs_1[,2], spar = 0.2),
                     x = seq(min(obs_1$year), max(obs_1$year),1))
   obs_desired <- as.matrix(obsD_3$y)
   rownames(obs_desired) <- obsD_3$x
@@ -57,11 +57,23 @@ get_obs <- function(country, ysd){
   obs_data <- c(obs_data, list(obs_desired = obs_desired))
   }
   
-  # Observed cohort fert by edu
-  file_ccf <- file.path(dir_o, "ccf_edu")
+  # Observed cohort fert
+  file_ccf <- file.path(dir_o, "ccf_hfd.txt")
   if (file.exists(file_ccf)){
+    obs_ccf_0 <- read.table(file_ccf, sep = "", skip = 2, header = T)[,1:2]
+    obs_ccf_0$CCF <- suppressWarnings(as.numeric(obs_ccf_0$CCF))
+    obs_ccf_0 <- obs_ccf_0[!is.na(obs_ccf_0$CCF),]
+    obs_ccf <- as.data.frame(obs_ccf_0[,2])
+    rownames(obs_ccf) <- obs_ccf_0$Cohort
+    names(obs_ccf) <- "ccf"
+    obs_data <- c(obs_data, list(obs_ccf = obs_ccf))  
+  }
+  
+  # Observed cohort fert by edu
+  file_ccf_edu <- file.path(dir_o, "ccf_edu")
+  if (file.exists(file_ccf_edu)){
     if(country == "FR"){
-      obs_1 <- read.table(file_ccf, sep = "", skip = 0, header = T)
+      obs_1 <- read.table(file_ccf_edu, sep = "", skip = 0, header = T)
       obs_1[,1] <- seq(1931,1970,5)
       obs_1[nrow(obs_1),1] <- 1970
       edu <- list()
@@ -72,7 +84,7 @@ get_obs <- function(country, ysd){
       obs_ccf_edu <- as.matrix(cbind(edu[[1]]$y,edu[[2]]$y,edu[[3]]$y))
       row.names(obs_ccf_edu) <- edu[[1]]$x 
     }else{
-      obs_1 <- read.table(file_ccf, sep = "", skip = 0, header = T)
+      obs_1 <- read.table(file_ccf_edu, sep = "", skip = 0, header = T)
       obs_ccf_edu <- as.matrix(obs_1[,2:4]) 
       row.names(obs_ccf_edu) <- obs_1[,1]
     }

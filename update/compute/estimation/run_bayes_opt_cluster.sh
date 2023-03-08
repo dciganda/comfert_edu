@@ -1,12 +1,12 @@
-COUNTRY=NO 
+COUNTRY=FL 
 INI_YEAR=1910 
-END_YEAR=2019 
-N0=100 
-N_SIM=5 
-INI_C=2507 
-N=180 
-WEIGHTS=0.5_0_0_0_0.5 
-NE=30 
+END_YEAR=2050 
+N0=200 
+N_SIM=2 
+INI_C=3200 
+N=400 
+WEIGHTS=0.4_0_0_0_0.6_0 
+NE=100 
 
  
 mkdir -p ../out_files 
@@ -24,7 +24,7 @@ export N0
 export NE 
 
  
-module load R/4.0.4 
+module load r/4.0.3 
 Rscript get_initial_sample.R >> ../out_files/bo_out.Rout 2>&1 $COUNTRY $N_SIM $INI_C $N0 $WEIGHTS 
 
  

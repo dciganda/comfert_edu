@@ -35,7 +35,7 @@ clusterCall(cl, function() {
 cat("running comfert.. \n")
 
 s <- Sys.time()
-output <- parLapply(cl, 1:nsim, "comfert", param_ls, parallel_run = T, cluster = F) 
+output <- parLapply(cl, 1:nsim, "comfert", param_ls, cluster = F) 
 e <- Sys.time()
 print(e-s)
 cat("finished parallel processes \n")

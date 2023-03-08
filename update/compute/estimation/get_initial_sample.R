@@ -31,8 +31,6 @@ get_param_set <- function(priors, country, n){
   
   colnames(final_sample) <- colnames(priors)
   
-  final_sample$modName <- "regular"
-  
   return(final_sample)
   
 }
@@ -49,7 +47,7 @@ global_path <- file.path("..","results",
                          weights)
 
 # create dirs
-dirs <- list("param_sample", "new_evaluations", "post", "params")
+dirs <- list("priors", "ini_param_sample", "new_evaluations", "post")
 sapply(dirs, function(x){if(!dir.exists(file.path(global_path, x))){dir.create(file.path(global_path, x))}})
 
 posterior <- as.data.frame(matrix(ncol = ncol(params)+1))
@@ -57,8 +55,8 @@ names(posterior) <- c(names(params), "mse")
 
 # save
 write.csv(priors, file.path(global_path, dirs[[1]], "priors.csv"), row.names=F)
-write.csv(params, file.path(global_path, dirs[[1]], "params.csv"), row.names=F)
-write.csv(posterior, file.path(global_path, dirs[[3]], "posterior.csv"), row.names = F)
+write.csv(params, file.path(global_path, dirs[[2]], "params.csv"), row.names=F)
+write.csv(posterior, file.path(global_path, dirs[[4]], "posterior.csv"), row.names = F)
 
 #############################################################################################
 
