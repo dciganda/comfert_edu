@@ -1,4 +1,4 @@
-plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
+plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
                      weights, asfr = F, tfr = F, ccf = F,
                      ccf_edu = F, ccf_edu_obs = F, ccf_compare = F, mab = F, mas = F,
                      mabs = F, unplanned = F, unwanted = F, desired = F,
@@ -6,20 +6,9 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
                      scenario = F, save = F, interval = F,
                      alpha_int = 0.05, fore = F, last_obs_year = 2019) {
   
-  # Global path
-  global_path <- file.path("results", paste(country),
-                           paste0("n_sim_", nsim),
-                           paste0("ini_c_", ini_c),
-                           paste(weights, collapse = "_"))
-  
-  # Get posterior distribution
-  post <- readRDS(file.path(global_path, "post", "posterior.rds"))[-(1:(n0)),]
-  post[order(post$mse),]
-  opt_res_dir <- check_paramset(res_dir = global_path, rank = 1)
-  
-  out_path <- file.path("..","data",country,"out")
+  out_path <- file.path("..","data",pop,"out")
   save_path <- file.path("..","..","latex","plots")
-  res_names <- sapply(res_dir, function(x) {list.files(x, "RData", full.names = TRUE)})
+  res_names <- sapply(res_path, function(x) {list.files(x, "RData", full.names = TRUE)})
   tyears <- length(iniY:(endY-1))
   every_nth <- function(x, nth, empty = TRUE, inverse = FALSE) {
     if (!inverse) {
@@ -576,7 +565,7 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
     
     if(interval){  
       
-      intervals <- intervals_function(res_dir, post_dat,
+      intervals <- intervals_function(res_path, post_dat,
                                       element = "asfr", year_asfr = year,
                                       iniY = iniY,
                                       endY = endY,
@@ -626,8 +615,8 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
   source(file.path("..","estimation","get_sim.R"))
   source(file.path("..","estimation","intervals_function.R"))
   
-  obs_set <- get_obs(country, ysd)
-  sim_set <- get_sim(res_dir, iniY, endY, nsim,
+  obs_set <- get_obs(pop, ysd)
+  sim_set <- get_sim(res_path, iniY, endY, nsim,
                      obs_set, asfr, unplanned,
                      unwanted, desired, all_sim = T)
   
@@ -685,7 +674,7 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
     
     if(interval){
       
-      intervals <- intervals_function(res_dir, post_dat,
+      intervals <- intervals_function(res_path, post_dat,
                                       element = "tfr", 
                                       iniY = iniY,
                                       endY = endY-1,
@@ -757,7 +746,7 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
     
     if(interval){
       
-      intervals <- intervals_function(res_dir, 
+      intervals <- intervals_function(res_path, 
                                       post_dat,
                                       element = "cohort",
                                       col = 2,
@@ -793,7 +782,7 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
     
     if(scenario){
       
-      scenario_path <- file.path("results",country,"scenario")
+      scenario_path <- file.path("results",pop,"scenario")
       res_names_sc <- list.files(scenario_path, "RData", full.names = TRUE)
       sim_sc <- sapply(res_names_sc, function(x) readRDS(x)["cohort"])
       sim_sc_short <- lapply(sim_sc, function(x) x[x$year>=1970,])
@@ -973,7 +962,7 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
     
     if(interval){
       
-      intervals <- intervals_function(res_dir,
+      intervals <- intervals_function(res_path,
                                       post_dat,
                                       element = "meanAgeBirth", 
                                       iniY = iniY,
@@ -1162,7 +1151,7 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
     
     sim <- sim_set$sim_desired
     
-    ldat <- long_dat(sim, obs, nsim, ysd = 1995, iniY = iniY, endY = endY-1) # CAMBIAR YSD
+    ldat <- long_dat(sim, obs, nsim, ysd = 1930, iniY = iniY, endY = endY-1) # CAMBIAR YSD
     
     if(!fore){
       
@@ -1185,7 +1174,7 @@ plot_out <- function(res_dir, post_dat, country, iniY, endY, nsim,
 
     if(interval){
       
-      intervals <- intervals_function(res_dir, post_dat,
+      intervals <- intervals_function(res_path, post_dat,
                                       element = "dKids_all",
                                       iniY = iniY, 
                                       endY = endY-1,

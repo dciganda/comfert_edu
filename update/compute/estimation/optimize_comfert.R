@@ -1,4 +1,4 @@
-optimize_comfert <- function(res_path, global_path, country, iniY, endY, ini_c, n0, nsim,
+optimize_comfert <- function(res_path, global_path, pop, iniY, endY, ini_c, n0, nsim,
                              N, ne, params, priors, weights, nr_new_evals = 100){
   # OS
   switch(Sys.info()[['sysname']],
@@ -17,7 +17,7 @@ optimize_comfert <- function(res_path, global_path, country, iniY, endY, ini_c, 
   # estimate gp, eval new points and repeat  
   n <- n0
 
-  obs <- get_obs(country, ysd = 1960) # observed data
+  obs <- get_obs(pop, ysd = 1960) # observed data
   
   while (n < (n0+N)) {
     
@@ -43,7 +43,7 @@ optimize_comfert <- function(res_path, global_path, country, iniY, endY, ini_c, 
     cat("\n training gp...\n")
     gpe <- mlegp::mlegp(params[!is.na(params$mse),!names(params) == "mse"], 
                         params[!is.na(params$mse), "mse"], 
-                        nugget = T, verbose = 0)
+                        nugget = T, verbose = 0, parallel = T)
     
     gp <- list(params, gpe)
     
@@ -70,7 +70,7 @@ optimize_comfert <- function(res_path, global_path, country, iniY, endY, ini_c, 
     # compute the model at new points
     cat("\n computing new evaluations...\n")
     output <- parallel_comfert(params = new_eval[rep(1:nrow(new_eval), each = nsim),],
-                               country,
+                               pop,
                                ini_c,
                                iniY,
                                endY)

@@ -96,7 +96,7 @@ ini_mean_d <- 1940 # year from which D_bar is computed from real average
 k_v = seq(1, 30, 0.01) 
 exp_v <- sapply(k_v, get_exp_vals, theta,0, maxKids)
 k_vals = data.table(mean=exp_v, k=k_v) # shape values corresponding to expected values of Gamma dist.   
-c_d <- 1947 #
+c_d <- 1942 #
 mau_trend <- seq(ini_mau, end_mau, length.out = c_d-iniY) # mean age union early cohorts
 
 ###########################################################

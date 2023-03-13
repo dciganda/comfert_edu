@@ -1,6 +1,7 @@
-run_bayes <- function(pop, iniY, endY, ini_c,
-                               n0, nsim, ne, iter, N,
-                               weights, priors, fix_p){
+run_bayes <- function(global_path, res_path, 
+                      pop, iniY, endY, ini_c,
+                      n0, nsim, ne, N,
+                      weights, priors, fix_p){
   
   
   source(file.path("..","estimation","get_new_points.R"))
@@ -9,21 +10,12 @@ run_bayes <- function(pop, iniY, endY, ini_c,
   source(file.path("..","estimation","save_res.R"))
   
   
-  # directory to store results
-  global_path <- file.path("results", paste(country),
-                           paste0("n_sim_", nsim),
-                           paste0("ini_c_", ini_c),
-                           paste(weights, collapse = "_"))
-  
-  res_path <- file.path(global_path,"results")
-  
-  
   params <- get_new_points(priors, n=n0) # Initial sample of parameter combinations  
   
   
   # Compute model at initial parameter set 
   output <- parallel_comfert(params = params[rep(seq_len(nrow(params)), each = nsim),],
-                             country = country,
+                             pop = pop,
                              ini_c = ini_c,
                              iniY = iniY,
                              endY = endY) 
@@ -40,16 +32,17 @@ run_bayes <- function(pop, iniY, endY, ini_c,
   dir.create(file.path(global_path, "sim_trajectories"), recursive = T)
   
   # Bayesian optimization
-  optimize_comfert(res_path,
-                   global_path,
-                   country, 
-                   iniY,
-                   endY,
-                   ini_c,
-                   n0,
-                   nsim,
-                   N, ne,
-                   params,
-                   priors,
-                   weights) 
+  optimize_comfert(res_path = res_path,
+                   global_path = global_path,
+                   pop = pop,
+                   iniY = iniY,
+                   endY = endY,
+                   ini_c = ini_c,
+                   n0 = n0,
+                   nsim = nsim,
+                   N = N,
+                   ne = ne,
+                   params = params,
+                   priors = priors,
+                   weights = weights) 
 }

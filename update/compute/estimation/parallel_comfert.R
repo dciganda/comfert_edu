@@ -1,16 +1,16 @@
 
 parallel_comfert <- function(params,
-                             country,
+                             pop,
                              ini_c, 
                              iniY,
                              endY) {
 
   path_to <- function(file){
-    file.path("..","data",country,"in", file)}
+    file.path("..","data",pop,"in", file)}
   
   o_file <- file.path("..","out_files",
                       paste0("parallel_comfert_",
-                      country,"_", Sys.Date(),".txt"))
+                      pop,"_", Sys.Date(),".txt"))
   
   if (file.exists(o_file)){file.remove(o_file)} 
   
@@ -20,7 +20,7 @@ parallel_comfert <- function(params,
   clusterEvalQ(cl, library(data.table))
   clusterEvalQ(cl, library(truncdist))
   
-  clusterExport(cl,"country")
+  clusterExport(cl,"pop")
   clusterExport(cl,"path_to", envir = environment())
   clusterExport(cl,"ini_c", envir = environment())
   clusterExport(cl,"params", envir = environment())
