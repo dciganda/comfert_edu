@@ -1,9 +1,5 @@
-save_res <- function(results, pars, seq, res_path, delete = FALSE){
-  
-  if(delete){
-    if(dir.exists(res_path)){unlink(res_path, recursive = T)} # check if results folder exists!
-  }
-  
+save_res <- function(results, pars, seq, res_path, nsim){
+
 p_set <- function(x){file.path(res_path, paste0("param_set_",x))}
 res <- function(x){paste0("full_results", ((x-1) %% nsim)+1,".RData")}
 dir_names <- rep(lapply(seq, p_set), each = nsim)

@@ -1,9 +1,8 @@
 
-parallel_comfert <- function(params,
-                             pop,
-                             ini_c, 
-                             iniY,
-                             endY) {
+parallel_comfert <- function(param, hparam) {
+  
+  hparam_list <- names(hparam)
+  for(i in hparam_list){assign(i, hparam[[i]], envir = globalenv())}
 
   path_to <- function(file){
     file.path("..","data",pop,"in", file)}
@@ -14,7 +13,8 @@ parallel_comfert <- function(params,
   
   if (file.exists(o_file)){file.remove(o_file)} 
   
-  cl <- makeCluster(nrow(params), type = "PSOCK", outfile = paste0("pc_",unname(Sys.info()[4]),".txt"))
+  cl <- makeCluster(nrow(param), type = "PSOCK",
+                    outfile = paste0("pc_",unname(Sys.info()[4]),".txt"))
   
   clusterEvalQ(cl, library(lubridate))
   clusterEvalQ(cl, library(data.table))
@@ -23,7 +23,7 @@ parallel_comfert <- function(params,
   clusterExport(cl,"pop")
   clusterExport(cl,"path_to", envir = environment())
   clusterExport(cl,"ini_c", envir = environment())
-  clusterExport(cl,"params", envir = environment())
+  clusterExport(cl,"param", envir = environment())
   clusterExport(cl,"iniY", envir = environment())
   clusterExport(cl,"endY", envir = environment())
   clusterExport(cl,"fix_p", envir = environment())
@@ -36,8 +36,8 @@ parallel_comfert <- function(params,
   s <- Sys.time()
   
 
-  output <- parLapply(cl, 1:nrow(params), function (x) comfert(seed_val = x,
-                                                               params[x,],
+  output <- parLapply(cl, 1:nrow(param), function (x) comfert(seed_val = x,
+                                                               param[x,],
                                                                parallel_run = T,
                                                                cluster = F))
   e <- Sys.time()
@@ -45,6 +45,7 @@ parallel_comfert <- function(params,
   
   cat("finished parallel processes \n")
   stopCluster(cl)
-
+  
   return(output)
+
 }

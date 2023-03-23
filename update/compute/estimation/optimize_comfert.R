@@ -1,5 +1,5 @@
-optimize_comfert <- function(res_path, global_path, pop, iniY, endY, ini_c, n0, nsim,
-                             N, ne, params, priors, weights, nr_new_evals = 100){
+optimize_comfert <- function(res_path, global_path, param, 
+                             hparam, priors, fake_obs = F){
   # OS
   switch(Sys.info()[['sysname']],
          Windows= {sa <- "NUL"},
@@ -37,17 +37,17 @@ optimize_comfert <- function(res_path, global_path, pop, iniY, endY, ini_c, n0, 
                    ccf_edu = length(obs$obs_ccf_edu)>0) # simulated data
     
     # compute mse
-    params$mse <- sapply(sim, compute_mse, obs, weights)  
+    param$mse <- sapply(sim, compute_mse, obs, weights)  
     
     # training gp
     cat("\n training gp...\n")
-    gpe <- mlegp::mlegp(params[!is.na(params$mse),!names(params) == "mse"], 
-                        params[!is.na(params$mse), "mse"], 
+    gpe <- mlegp::mlegp(param[!is.na(param$mse),!names(param) == "mse"], 
+                        param[!is.na(param$mse), "mse"], 
                         nugget = T, verbose = 0, parallel = T)
     
-    gp <- list(params, gpe)
+    gp <- list(param, gpe)
     
-    new_set <- get_new_points(priors, n = nr_new_evals)
+    new_set <- get_new_points(priors, n = n0*2)
     
     pred <- predict.gp(gp[[2]], newData = new_set, se.fit = T)
     
@@ -69,23 +69,21 @@ optimize_comfert <- function(res_path, global_path, pop, iniY, endY, ini_c, n0, 
     
     # compute the model at new points
     cat("\n computing new evaluations...\n")
-    output <- parallel_comfert(params = new_eval[rep(1:nrow(new_eval), each = nsim),],
-                               pop,
-                               ini_c,
-                               iniY,
-                               endY)
-
+    output <- parallel_comfert(param = new_eval[rep(1:nrow(new_eval), each = nsim),],
+                     hparam)
+    
     sink(sa)
     
     # Save Results
     save_res(results = output,
              pars = new_eval,
              seq = (n+1):(n+ne),
-             res_path = res_path)
+             res_path = res_path,
+             nsim = nsim)
     
     sink()
     
-    res_paths_ne <- lapply((n+1):(n+ne), function(x) file.path(paste0(res_path, "/param_set_", x)))
+    res_paths_ne <- lapply((n+1):(n+ne), function(x) file.path(res_path, paste0("param_set_", x)))
     
     # simulated rates
     sim <- get_sim(res_paths_ne, iniY, endY, nsim, obs,  
@@ -98,9 +96,9 @@ optimize_comfert <- function(res_path, global_path, pop, iniY, endY, ini_c, n0, 
     new_eval <- as.data.table(new_eval)
     new_eval[, mse := sapply(sim, compute_mse, obs, weights)]  
     
-    params_mse <- rbind(params, new_eval)
+    params_mse <- rbind(param, new_eval)
     
-    params <- rbind(params[, !names(params) == "mse"],
+    param <- rbind(param[, !names(param) == "mse"],
                     new_eval[, !"mse"])
     
     n <- n+ne
@@ -109,7 +107,15 @@ optimize_comfert <- function(res_path, global_path, pop, iniY, endY, ini_c, n0, 
   }
   
   sink(sa)
-  saveRDS(params_mse, paste0(paste0(global_path,"/post/posterior.rds")))
-  saveRDS(params, paste0(paste0(global_path,"/params/parameters.rds")))
+  
+  dir.create(file.path(global_path, "post"), recursive = T)
+  dir.create(file.path(global_path, "param"), recursive = T)
+  dir.create(file.path(global_path, "gp"), recursive = T)
+  dir.create(file.path(global_path, "sim_trajectories"), recursive = T)
+  
+  saveRDS(params_mse, file.path(global_path,"post","posterior.rds"))
+  saveRDS(param, file.path(global_path,"param","parameters.rds"))
+  saveRDS(gpe, file.path(global_path,"gp","gp.rds"))
+  
   sink()
 }
