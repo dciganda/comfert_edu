@@ -3,5 +3,7 @@ latex/
 results/
 prep/
 descriptives/
-update/compute/local/pc.txt
+compute/local/pc_HYDRA11.txt
+compute/local/pc_HYDRA01.txt
+compute/local/pc_HYDRA02.txt
 .Rhistory

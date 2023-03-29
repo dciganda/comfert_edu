@@ -7,28 +7,28 @@ invisible(lapply(p, library, character.only = TRUE))
 hparam <- list(pop = "NO",                 # reference population
                iniY = 1910,                # initial year of the simulations 
                endY = 2019,                # final year of the simulation
-               ini_c = 1000,               # size of the initial birth cohort 
+               ini_c = 1200,               # size of the initial birth cohort 
                n0 = 40,                    # size of initial sample of param combinations
                nsim = 2,                   # nr of simulations in each evaluated point - this will produce a cluster of size n0*nsim
                ne = 20,                    # nr of new evaluations at each iteration of the bayes opt. algorithm
                iter = 8,                   # nr of iterations
-               weights = c(asfr = .5,
-                           unplanned = 0.0,
-                           unwanted = 0.0,
-                           desired = .0,
-                           ccf = .0,
-                           ccf_edu = .5)   # weights for the computation of the MSE
+               weights = c(asfr = .0,
+                           unplanned = 0,
+                           unwanted = 0,
+                           desired = 0,
+                           ccf = 0.3,
+                           ccf_edu = .7)   # weights for the computation of the MSE
 )
 hparam[["N"]] <- hparam[["ne"]]*hparam[["iter"]]   # total nr of evaluations = n0+N
 
 # PRIORS ####
 priors <- data.frame(psi = c(1974, 1981),           # Year inflection point diffusion of contraception.
-                     upsilon = c(0.2, 0.3),       # Maximum Risk Unplanned births
+                     upsilon = c(0.15, 0.21),       # Maximum Risk Unplanned births
                      rho = c(0.015, 0.04),         # minimum risk of unplanned birth
                      r = c(0.1, 0.35),             # Speed of diffusion contraception
                      eta = c(0.5, 0.8),             # Max effect work
                      xi = c(3, 4),                  # years after end of education for family formation
-                     D_0 = c(2.8, 3),             # initial value desired family size
+                     D_0 = c(2.8, 2.95),             # initial value desired family size
                      delta = c(0.1, 0.16),         # delta D
                      tau = c(18, 30),               # effect of edu on intention 
                      epsilon = c(0.08, 0.18),      # rate effect education
@@ -79,7 +79,7 @@ source(file.path("..","analysis","plot_out.R"))
 # Get posterior distribution
 post <- readRDS(file.path(global_path, "post", "posterior.rds"))[-(1:(n0)),]
 post[order(post$mse),]
-opt_res_dir <- check_paramset(res_dir = global_path, rank = 2)
+opt_res_dir <- check_paramset(res_dir = global_path, rank = 5)
 
 # Plot outcomes
 plot_out(global_path = global_path,

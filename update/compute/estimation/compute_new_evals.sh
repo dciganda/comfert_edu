@@ -1,5 +1,5 @@
 #!/bin/sh 
-#SBATCH -t 22:00:00 
+#SBATCH -t 20:00:00 
 #SBATCH -o ../results/out_files/Job%A_%a 
 #SBATCH --mem=9000 
 #SBATCH -p medium 

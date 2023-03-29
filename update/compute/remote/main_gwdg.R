@@ -5,36 +5,38 @@ library(splines); library(survival); library(stargazer)
 country <- "NO" # country on which simulations are performed 
 iniY <- 1910 # years for which the simulations are performed
 endY <- 2019 # years for which the simulations are performed
-ini_c <- 2508 # size of the initial birth cohorts of the model (affects computation times - 50 takes 10-15 minutes, but should be closer to 1000 for smooth results)
-n0 <- 100 # size of initial sample of param combinations
-nsim <- 5 # nr of simulations in each evaluated point - this will produce a cluster of size n0*nsim
-ne <- 30 # nr of new evaluations at each iteration of the bayes opt. algorithm
-N <- 180 # total nr of evaluations n0+N
+ini_c <- 2500 # size of the initial birth cohorts of the model (affects computation times - 50 takes 10-15 minutes, but should be closer to 1000 for smooth results)
+n0 <- 200 # size of initial sample of param combinations
+nsim <- 2 # nr of simulations in each evaluated point - this will produce a cluster of size n0*nsim
+ne <- 40 # nr of new evaluations at each iteration of the bayes opt. algorithm
+N <- 400 # total nr of evaluations n0+N
 partition <- "medium"  # computing partition in cluster
 c_time <- "20:00:00"   # time requested for each model run in cluster  
 weights <- c(asfr = .3,
-             unplanned = 0.00,
-             unwanted = 0.00,
-             desired = .0,
-             ccf_edu = .7) # weights for the computation of the MSE
+            unplanned = 0,
+            unwanted = 0,
+            desired = 0,
+            ccf = 0,
+            ccf_edu = .7) # weights for the computation of the MSE
 ml <- "module load r/4.0.3"
 
-priors <- data.frame(psi = c(1972, 1979),           # Year inflection point diffusion of contraception.
-                     upsilon = c(0.15, 0.55),       # Maximum Risk Unplanned births
-                     rho = c(0.025, 0.050),         # minimum risk of unplanned birth
-                     r = c(0.15, 0.27),             # Speed of diffusion contraception
-                     eta = c(0.3, 0.8),             # Max effect work
-                     xi = c(3, 6),                  # years after end of education for family formation
-                     D_0 = c(2.2, 2.6),             # initial value desired family size
-                     delta = c(0.005, 0.1),          # delta D
+# PRIORS ####
+priors <- data.frame(psi = c(1974, 1981),           # Year inflection point diffusion of contraception.
+                     upsilon = c(0.2, 0.3),       # Maximum Risk Unplanned births
+                     rho = c(0.015, 0.04),         # minimum risk of unplanned birth
+                     r = c(0.1, 0.35),             # Speed of diffusion contraception
+                     eta = c(0.5, 0.8),             # Max effect work
+                     xi = c(3, 4),                  # years after end of education for family formation
+                     D_0 = c(2.8, 3),             # initial value desired family size
+                     delta = c(0.1, 0.16),         # delta D
                      tau = c(18, 30),               # effect of edu on intention 
-                     epsilon = c(0.005, 0.15),         # rate effect education
-                     alpha = c(0.03, 0.16)          # difference in contraceptive use by edu
+                     epsilon = c(0.08, 0.18),      # rate effect education
+                     alpha = c(0.06, 0.16)          # difference in contraceptive use by edu
 )
 
 saveRDS(priors, file.path("..","estimation","priors.rds")) # save priors
 
-# -- fixed parameters --
+# FIXED PARAMETERS ####
 fix_p <- list(lambda = 2.5e-08,                     # rate decrease penalty intention after birth
               sd_lnrm = 0.16,                       # stdrd dev lognorm
               gamma = 38,                           # Fecundability age
@@ -42,12 +44,13 @@ fix_p <- list(lambda = 2.5e-08,                     # rate decrease penalty inte
               A = 0.07,                             # reduction risk unplanned after achieve D
               phi = .22,                            # maximum fecundability
               theta = 0.1,                          # scale of truncated Gamma (D)
-              end_mau = 20,
+              delta_one = 1.05,
+              end_mau = 19.7,
               ini_mau = 32,
               u = c(seq(0.22, 0.09,
-                        length.out = 1940-iniY),   # union probability
+                        length.out = 1938-iniY),   # single probability:
                     seq(0.09, 0.16,
-                        length.out = (endY+1)-1940))
+                        length.out = (endY+1)-1938))
 )
 
 saveRDS(fix_p, file.path("..","estimation","fix_p.rds")) # save fixed params
@@ -62,7 +65,7 @@ pswd <- "Rostock1418."
 
 # -- connecting to cluster -- 
 session <- ssh_connect(host = user, passwd = pswd, keyfile = key)
-cluster_path <- "U:/cloud/comfert/comfert_edu/update/compute/"
+cluster_path <- "U:/cloud/work/comfert/comfert_edu/update/compute/"
 run_dir <- paste0(cluster_path,"run/")
 data_dir <- paste0(cluster_path,"data/")
 estimation_dir <- paste0(cluster_path,"estimation/")
