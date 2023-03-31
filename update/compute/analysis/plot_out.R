@@ -854,6 +854,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     sim <- do.call("rbind", sim_all)
     sim$cat <- rep(0:3, each = nrow(sim_all[[1]]))
     
+    
     p <- p_sim_cats(sim, ylim = c(1, 4), xlim = c(1928, 1970),
                     lbs = c("Simulated", "Mean of simulations"),
                     lbs_cats = c("Mean", "Low Edu", "Med Edu", "High Edu"),
@@ -862,6 +863,104 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
                     colour = colour) 
     
     p <- p + xlab("Cohort") + ylab("Completed Cohort Fertility")
+    
+    if(interval){
+      
+      # There are three elements (cohort1, cohort2, cohort3)
+      
+      #### First element  ####
+      
+      intervals1 <- intervals_function(res_path, 
+                                       post_dat,
+                                       element = "cohort1",
+                                       col = 2,
+                                       iniY = iniY,
+                                       endY = endY-50-1,
+                                       alpha_int = alpha_int)
+      
+      sim$int_inf1 <- NA
+      sim$int_sup1 <- NA
+      
+      
+      for (i in 1:nrow(sim)) {
+        
+        if (sim$type[i] == 'Mean of simulations'){
+          
+          sim$int_inf1[i] <- as.numeric(round(intervals1[match(sim$year[i], intervals1$years.year),3],4))
+          sim$int_sup1[i] <- as.numeric(round(intervals1[match(sim$year[i], intervals1$years.year),4],4))
+          
+        }
+        
+      }
+      
+      
+      #### Second element #### 
+      
+      intervals2 <- intervals_function(res_path, 
+                                       post_dat,
+                                       element = "cohort2",
+                                       col = 2,
+                                       iniY = iniY,
+                                       endY = endY-50-1,
+                                       alpha_int = alpha_int)
+      
+      sim$int_inf2 <- NA
+      sim$int_sup2 <- NA
+      
+      
+      for (i in 1:nrow(sim)) {
+        
+        if (sim$type[i] == 'Mean of simulations'){
+          
+          sim$int_inf2[i] <- as.numeric(round(intervals2[match(sim$year[i], intervals2$years.year),3],4))
+          sim$int_sup2[i] <- as.numeric(round(intervals2[match(sim$year[i], intervals2$years.year),4],4))
+          
+        }
+        
+      }
+
+      #### Third element  #### 
+      
+      intervals3 <- intervals_function(res_path, 
+                                       post_dat,
+                                       element = "cohort3",
+                                       col = 2,
+                                       iniY = iniY,
+                                       endY = endY-50-1,
+                                       alpha_int = alpha_int)
+      
+      sim$int_inf3 <- NA
+      sim$int_sup3 <- NA
+      
+      
+      for (i in 1:nrow(sim)) {
+        
+        if (sim$type[i] == 'Mean of simulations'){
+          
+          sim$int_inf3[i] <- as.numeric(round(intervals3[match(sim$year[i], intervals3$years.year),3],4))
+          sim$int_sup3[i] <- as.numeric(round(intervals3[match(sim$year[i], intervals3$years.year),4],4))
+          
+        }
+        
+      }
+      
+      # Keep inferior | superior boundaries 
+      sim$int_inf <- unlist(lapply(1:nrow(sim), function(i) { min(sim$int_inf1[i], sim$int_inf2[i], sim$int_inf3[i])  }))
+      sim$int_sup <- unlist(lapply(1:nrow(sim), function(i) { max(sim$int_sup1[i], sim$int_sup2[i], sim$int_sup3[i])  }))
+    
+      
+      #### Plot ####*
+      
+      p <- p + geom_ribbon(aes(ymin = sim$int_inf, 
+                               ymax = sim$int_sup), 
+                           fill = "firebrick", alpha = 0.05, show.legend = F) 
+      
+      
+      
+      
+      
+      
+    }
     
     if(save){save_plot("ccf_edu")}
     
@@ -895,6 +994,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     sim_all_b <- do.call("rbind", sim_all)
     sim_all_b$cat <- rep(0:1, each = nrow(sim_all[[1]]))
     
+    
     if(!fore){
       
       sim_all_b <- sim_all_b[sim_all_b$year <= last_obs_year-50-1,]
@@ -918,6 +1018,76 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
                label="Tertiary",
                color="black",
                size = 4)
+    
+    if(interval){
+      
+      # There are two elements (cohort1, cohort2)
+      
+      #### First Element  ####
+      
+      intervals1 <- intervals_function(res_path, 
+                                      post_dat,
+                                      element = "cohort1",
+                                      col = 2,
+                                      iniY = iniY,
+                                      endY = endY-50-1,
+                                      alpha_int = alpha_int)
+      
+      sim_all_b$int_inf1 <- NA
+      sim_all_b$int_sup1 <- NA
+      
+      
+      for (i in 1:nrow(sim_all_b)) {
+        
+        if (sim_all_b$type[i] == 'Mean of simulations'){
+          
+          sim_all_b$int_inf1[i] <- as.numeric(round(intervals1[match(sim_all_b$year[i], intervals1$years.year),3],4))
+          sim_all_b$int_sup1[i] <- as.numeric(round(intervals1[match(sim_all_b$year[i], intervals1$years.year),4],4))
+          
+        }
+        
+      }
+      
+
+      #### Second element #### 
+      
+      intervals2 <- intervals_function(res_path, 
+                                       post_dat,
+                                       element = "cohort3",
+                                       col = 2,
+                                       iniY = iniY,
+                                       endY = endY-50-1,
+                                       alpha_int = alpha_int)
+      
+      sim_all_b$int_inf2 <- NA
+      sim_all_b$int_sup2 <- NA
+      
+      
+      for (i in 1:nrow(sim_all_b)) {
+        
+        if (sim_all_b$type[i] == 'Mean of simulations'){
+          
+          sim_all_b$int_inf2[i] <- as.numeric(round(intervals2[match(sim_all_b$year[i], intervals2$years.year),3],4))
+          sim_all_b$int_sup2[i] <- as.numeric(round(intervals2[match(sim_all_b$year[i], intervals2$years.year),4],4))
+          
+        }
+        
+      }
+      
+      
+      # Keep inferior | superior boundaries
+      sim_all_b$int_inf <- unlist(lapply(1:nrow(sim_all_b), function(i) { min(sim_all_b$int_inf1[i], sim_all_b$int_inf2[i]) }))
+      sim_all_b$int_sup <- unlist(lapply(1:nrow(sim_all_b), function(i) {max(sim_all_b$int_sup1[i], sim_all_b$int_sup2[i])  }))
+
+      #### Plot ####*
+      
+      p <- p + geom_ribbon(aes(ymin = sim_all_b$int_inf, 
+                               ymax = sim_all_b$int_sup), 
+                           fill = "firebrick", alpha = 0.1, show.legend = F) 
+      
+      
+      
+    }
     
     if(save){save_plot("ccf_edu_obs") }
     
