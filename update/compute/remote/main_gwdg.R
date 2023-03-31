@@ -93,29 +93,44 @@ scp_download(session, file.path("/home", "mpg08","daniel.ciganda",
                                 country,
                                 paste0("n_sim_",nsim),
                                 paste0("ini_c_",ini_c),
-                                paste(weights, collapse = "_"),"*"),
+                                paste(weights, collapse = "_"),"."),
              file.path(getwd(), res_dir))
+
 # ANALYSIS
 source(file.path("..","analysis","check_paramset.R"))
 source(file.path("..","analysis","plot_out.R"))
 
 # -- get posterior --
-post <- read.csv(file.path(res_dir, "post", "posterior.csv"))[-1,] 
+post <- read.csv(file.path(res_dir, "post", "posterior.csv"))[-(1:n0),]  
 post[order(post$mse),]
-opt_res_dir <- check_paramset(rank = 1)
+opt_res_dir <- check_paramset(res_dir, rank = 1)
 
 # Plot outcomes
-plot_out(opt_res_dir, country, iniY, endY, nsim, asfr = T, colour = T, save = T)
-
-plot_out(opt_res_dir, country, iniY, endY, nsim, asfr = T, tfr = F,
-         ccf = F, ccf_match = F, ccf_edu = F,
-         ccf_edu_obs = F, ccf_edu_obs_match = T, mab = F, mabs = F, desired = F,
-         gap = F, gap_edu = F, css = F, ysd = 1960, colour = T, save = F)
-
-plot_out(opt_res_dir, country, iniY, endY, nsim, asfr = F, tfr = F,
-         ccf = F, ccf_match = F, ccf_edu = F,
-         ccf_edu_obs = F, ccf_edu_obs_match = F, mab = F, mabs = F, desired = T,
-         gap = F, gap_edu = F, css = F, ysd = 1960, colour = T, save = T)
+plot_out(global_path = global_path,
+         res_path = opt_res_dir,
+         post_dat = post,
+         pop = country,
+         iniY = iniY,
+         endY = endY,
+         nsim = nsim,
+         weights = weights,
+         unplanned = T,
+         unwanted = F,
+         desired = T,
+         tfr = T,
+         ccf = T,
+         mab = T,
+         ccf_edu_obs = T,
+         ccf_compare = F,
+         css = T,
+         asfr = F,
+         gap = F,
+         gap_edu = F,
+         colour = T, 
+         interval = T,
+         alpha_int = 0.05,
+         last_obs_year = 2019,
+         save = F)
 
 # compute trajectories
 source(file.path("..","sim_trajectories","compute_trajectories.R"))
