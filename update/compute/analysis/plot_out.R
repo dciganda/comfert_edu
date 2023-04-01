@@ -1078,17 +1078,16 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
         
       }
       
-      
-      # Keep inferior | superior boundaries
-      sim_all_b$int_inf <- unlist(lapply(1:nrow(sim_all_b), function(i) { min(sim_all_b$int_inf1[i], sim_all_b$int_inf2[i]) }))
-      sim_all_b$int_sup <- unlist(lapply(1:nrow(sim_all_b), function(i) {max(sim_all_b$int_sup1[i], sim_all_b$int_sup2[i])  }))
 
       #### Plot ####*
       
-      p <- p + geom_ribbon(aes(ymin = sim_all_b$int_inf, 
-                               ymax = sim_all_b$int_sup), 
-                           fill = "firebrick", alpha = 0.1, show.legend = F) 
-      
+      p <- p + geom_ribbon(aes(ymin = sim_all_b$int_inf1, 
+                               ymax = sim_all_b$int_sup1), 
+                           fill = "firebrick", alpha = 0.1, show.legend = F) +
+               geom_ribbon(aes(ymin = sim_all_b$int_inf2, 
+                                ymax = sim_all_b$int_sup2), 
+                           fill = "firebrick", alpha = 0.1, show.legend = F)
+              
       
       
     }
