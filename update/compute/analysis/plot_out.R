@@ -563,6 +563,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
       
     }
     
+
     if(interval){  
       
       intervals <- intervals_function(res_path, post_dat,
@@ -596,6 +597,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
       
       
     } # USES YEAR from plot_YEAR
+    
     
     if(year != 1961){
       p_year <- p_year + theme(legend.position = "none")
@@ -632,7 +634,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     sim <- sim_set$sim_asfr
     
     ymax <- max(max(unlist(sim)), max(unlist(obs)))
-    
+     
     p <- lapply(as.numeric(rownames(obs)), plot_year_asfr, obs, sim, colour = colour)
     
     print(p)
@@ -722,7 +724,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     names(obs)[1] <- "Year" 
     ldat <- long_dat(sim, obs, nsim, ysd = iniY, iniY = iniY, endY = endY-50-1)
     
-    x1 <- 1925
+    x1 <- 1935
     ldat <- ldat[ldat$year>=x1,]
     
     if(!fore){
@@ -995,6 +997,8 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     sim_all_b$cat <- rep(0:1, each = nrow(sim_all[[1]]))
     
     
+    sim_all_b <- sim_all_b[sim_all_b$year>= 1935,]
+    
     if(!fore){
       
       sim_all_b <- sim_all_b[sim_all_b$year <= last_obs_year-50-1,]
@@ -1004,8 +1008,8 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     p <- p_sim_obs_cats(sim_all_b,
                         y1 = 1,
                         y2 = 3.5,
-                        x1 = max(sim_all_b$year),
-                        x2 = min(sim_all_b$year),
+                        x1 = max(sim_all_b$year)+1,
+                        x2 = 1934,
                         lbs = c("Simulated","Observed", "Mean of simulations"),
                         lbs_cats = c("Edu1", "Edu3"),
                         leg_pos = c(0.5, 0.8),
@@ -1109,7 +1113,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     # sim
     sim <- sapply(res_names, function(x) readRDS(x)["meanAgeBirth"])
     
-    ldat <- long_dat(sim, obs, nsim, ysd = 1960, iniY = iniY, endY = endY-1)
+    ldat <- long_dat(sim, obs, nsim, ysd = 1967, iniY = iniY, endY = endY-1)
     
     if(!fore){
       
@@ -1122,8 +1126,8 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     p <- p_obs_sim(ldat,
                    x1 = min(ldat$year)-1,
                    x2 = max(ldat$year)+1,
-                   y1 = 22,
-                   y2 = 37,
+                   y1 = 20,
+                   y2 = 40,
                    colour = colour,
                    yaxe_tick = 1)
     
@@ -1313,15 +1317,77 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
   }
   
   #*************************************************************************************************************
-    
+  #   
+  # if(desired_obs){
+  #   
+  #   obs <- as.data.frame(obs_set$obs_desired)
+  #   obs$Year <- as.numeric(rownames(obs))
+  #   
+  #   sim <- sim_set$sim_desired
+  #   
+  #   ldat <- long_dat(sim, obs, nsim, ysd = 1930, iniY = iniY, endY = endY-1) # CAMBIAR YSD
+  #   
+  #   if(!fore){
+  #     
+  #     ldat <- ldat[ldat$year <= last_obs_year-1,]
+  #     name <- paste0("desired")
+  #     
+  #   }else{
+  #     name <- paste0("desired","_", "fore")
+  #   }
+  #   
+  #   p <- p_obs_sim(ldat,
+  #                  y1 = 0.5,
+  #                  y2 = 3.5,
+  #                  x1 = min(ldat$year)-1,
+  #                  x2 = max(ldat$year)+1,
+  #                  colour = colour)
+  #   
+  #   
+  #   p <- p + xlab("Year") + ylab("Desired Family Size")
+  # 
+  #   if(interval){
+  #     
+  #     intervals <- intervals_function(res_path, post_dat,
+  #                                     element = "dKids_all",
+  #                                     iniY = iniY, 
+  #                                     endY = endY-1,
+  #                                     alpha_int = alpha_int)
+  #     
+  #     ldat$int_inf <- NA
+  #     ldat$int_sup <- NA
+  #     
+  #     
+  #     for (i in 1:nrow(ldat)) {
+  #       
+  #       if (ldat$type[i] == 'Mean of simulations'){
+  #         
+  #         ldat$int_inf[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),3],4))
+  #         ldat$int_sup[i] <- as.numeric(round(intervals[match(ldat$year[i], intervals$years.year),4],4))
+  #         
+  #       }
+  #       
+  #     }
+  #     
+  #     
+  #     p <- p + geom_ribbon(aes(ymin = ldat$int_inf, 
+  #                              ymax = ldat$int_sup), 
+  #                          fill = "firebrick", alpha = 0.2, show.legend = F)
+  #     
+  #   }
+  #   
+  #   if(save){save_plot(name)}
+  #   
+  #   print(p)
+  #   
+  # }
+  # 
   if(desired){
-    
-    obs <- as.data.frame(obs_set$obs_desired)
-    obs$Year <- as.numeric(rownames(obs))
     
     sim <- sim_set$sim_desired
     
-    ldat <- long_dat(sim, obs, nsim, ysd = 1930, iniY = iniY, endY = endY-1) # CAMBIAR YSD
+    ldat <- long_dat(sim, obs = F, nsim, ysd = 1960, iniY = iniY, endY = endY-1)
+    
     
     if(!fore){
       
@@ -1332,16 +1398,11 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
       name <- paste0("desired","_", "fore")
     }
     
-    p <- p_obs_sim(ldat,
-                   y1 = 0.5,
-                   y2 = 3.5,
-                   x1 = min(ldat$year)-1,
-                   x2 = max(ldat$year)+1,
-                   colour = colour)
+    p <- p_sim(ldat, ylim = c(2,2.7), xlim = c(1960, 2020), colour = colour)
     
     
     p <- p + xlab("Year") + ylab("Desired Family Size")
-
+    
     if(interval){
       
       intervals <- intervals_function(res_path, post_dat,

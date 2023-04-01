@@ -1,80 +1,25 @@
 # PACKAGES ####
-p <- c("parallel", "data.table", "mlegp", "splines", "ggplot2", "survival") 
+p <- c("parallel", "mlegpFULL","data.table", "splines", "ggplot2", "survival") 
 invisible(lapply(p, library, character.only = TRUE))
 
-
-# HYPERPARAMETERS ####
-hparam <- list(pop = "NO",                 # reference population
-               iniY = 1910,                # initial year of the simulations 
-               endY = 2019,                # final year of the simulation
-               ini_c = 200,               # size of the initial birth cohort 
-               n0 = 40,                    # size of initial sample of param combinations
-               nsim = 2,                   # nr of simulations in each evaluated point - this will produce a cluster of size n0*nsim
-               ne = 20,                    # nr of new evaluations at each iteration of the bayes opt. algorithm
-               iter = 8,                   # nr of iterations
-               weights = c(asfr = .0,
-                           unplanned = 0,
-                           unwanted = 0,
-                           desired = 0,
-                           ccf = 0.3,
-                           ccf_edu = .7)   # weights for the computation of the MSE
-)
-hparam[["N"]] <- hparam[["ne"]]*hparam[["iter"]]   # total nr of evaluations = n0+N
-
-# PRIORS ####
-priors <- data.frame(psi = c(1976, 1978),           # Year inflection point diffusion of contraception.
-                     upsilon = c(0.29, 0.32),       # Maximum Risk Unplanned births
-                     rho = c(0.03, 0.05),         # minimum risk of unplanned birth
-                     r = c(0.2, 0.3),             # Speed of diffusion contraception
-                     eta = c(0.5, 0.65),             # Max effect work
-                     xi = c(4, 5),                  # years after end of education for family formation
-                     D_0 = c(2.8, 3.1),             # initial value desired family size
-                     delta = c(0.005, 0.011),         # delta D
-                     tau = c(24, 26.5),               # effect of edu on intention 
-                     epsilon = c(0.5, 0.6),      # rate effect education
-                     alpha = c(0.06, 0.08)          # difference in contraceptive use by edu
-)
-
-# FIXED PARAMETERS ####
-fix_p <- list(lambda = 2.5e-08,                     # rate decrease penalty intention after birth
-              sd_lnrm = 0.16,                       # stdrd dev lognorm
-              gamma = 38,                           # Fecundability age
-              kappa = 0.25,                         # Fecundability rate
-              A = 0.07,                             # reduction risk unplanned after achieve D
-              phi = .22,                            # maximum fecundability
-              theta = 0.1,                          # scale of truncated Gamma (D)
-              delta_one = 1.05,
-              end_mau = 19.7,
-              ini_mau = 32,
-              u = c(seq(0.22, 0.09,
-                        length.out = 1938-hparam[["iniY"]]),   # single probability:
-                    seq(0.09, 0.16,
-                        length.out = (hparam[["endY"]]+1)-1938))
-)
-
-# PATHS ####
-source(file.path("..","estimation","gen_id.R"))
-id <- gen_id()
-global_path <- file.path("results", id$id)
+# GET RESULTS ####
+id <- list.files(file.path("..", "local", "results"))[1]
+global_path <- file.path("..", "local", "results", id)
 res_path <- file.path(global_path,"results")
 
-# RUN BAYES ####
-source(file.path("..","estimation","run_bayes.R"))
-
-start <- Sys.time()
-run_bayes(global_path = global_path,
-          res_path = res_path,
-          hparam = hparam,
-          priors = priors,
-          fix_p =fix_p,
-          id = id,
-          analysis = F)
-end <- Sys.time()
-print(end-start)
+log <- read.csv(file.path("..", "log", "log.csv"))
+hp <- log[which(log$id==id),]
+  
+n0 <- hp$n0[1]
+pop <- hp$pop[1]
+iniY <- hp$iniY[1]
+endY <- hp$endY[1]
+nsim <- hp$nsim[1]
 
 # ANALYSIS ####
 source(file.path("..","analysis","check_paramset.R"))
 source(file.path("..","analysis","plot_out.R"))
+
 
 # Get posterior distribution
 post <- readRDS(file.path(global_path, "post", "posterior.rds"))[-(1:(n0)),]
@@ -90,13 +35,13 @@ plot_out(global_path = global_path,
          endY = endY,
          nsim = nsim,
          weights = weights,
-         unplanned = T,
+         unplanned = F,
          unwanted = F,
          desired = F,
          tfr = T,
          ccf = T,
          mab = T,
-         ccf_edu_obs = T,
+         ccf_edu_obs = F,
          ccf_compare = F,
          css = F,
          asfr = F,
@@ -107,6 +52,12 @@ plot_out(global_path = global_path,
          alpha_int = 0.05,
          last_obs_year = 2019,
          save = F)
+
+
+# SENSITIVITY ANALYSIS ####
+gp <- readRDS(file.path(global_path, "gp", "gp.rds"))
+
+FANOVADecomposition.gp(gp, verbose = F, Interaction = F)
 
 # SCENARIOS ####
 source(file.path("..","sim_trajectories","compute_trajectories.R"))
