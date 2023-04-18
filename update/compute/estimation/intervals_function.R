@@ -40,7 +40,7 @@ intervals_function <- function(opt_res_dir, post_dat, element, year_asfr = 0, ys
     
     obs_df_asfr <- data.frame(matrix(NA,ncol = 35)) # create a data frame for the observed data (35 years between 15-50)
     sim_df_asfr <- data.frame(matrix(NA,ncol = 35)) # create a data frame for the simulated data (35 years between 15-50)
-    obs_set <- get_obs(pop, ysd) #observed values are taken from ysd
+    obs_set <- get_obs(country, ysd) #observed values are taken from ysd
     
     for (i in 1:nrow(accepted)){
       

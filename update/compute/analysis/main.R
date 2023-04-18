@@ -3,7 +3,7 @@ p <- c("parallel", "mlegpFULL","data.table", "splines", "ggplot2", "survival")
 invisible(lapply(p, library, character.only = TRUE))
 
 # GET RESULTS ####
-id <- list.files(file.path("..", "local", "results"))[1]
+id <- list.files(file.path("..", "local", "results"))[15]
 global_path <- file.path("..", "local", "results", id)
 res_path <- file.path(global_path,"results")
 
@@ -37,7 +37,7 @@ plot_out(global_path = global_path,
          weights = weights,
          unplanned = F,
          unwanted = F,
-         desired = F,
+         desired = T,
          tfr = T,
          ccf = T,
          mab = T,

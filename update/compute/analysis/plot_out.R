@@ -6,7 +6,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
                      scenario = F, save = F, interval = F,
                      alpha_int = 0.05, fore = F, last_obs_year = 2019) {
   
-  out_path <- file.path("..","data",pop,"out")
+  out_path <- file.path("..","data","final", pop,"out")
   save_path <- file.path("..","..","latex","plots")
   res_names <- sapply(res_path, function(x) {list.files(x, "RData", full.names = TRUE)})
   tyears <- length(iniY:(endY-1))
@@ -155,7 +155,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
    return(p)
     
   }
-  p_sim <- function(dat, ylim, xlim, colour){
+  p_sim <- function(dat, colour,  x1, x2, y1, y2, yaxe_tick = 0.1){
     
     if(colour){
       col <- c("brown2", "brown2")
@@ -164,6 +164,14 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     }
     
     lbs <- c("Simulated", "Mean of simulations")
+    
+    length_grid <- 20
+    
+    break_x <- data.frame(x1, x2, y = seq(y1, y2, length.out = length_grid))
+    break_y <- data.frame(y1, y2, x = seq(x1, x2, length.out = length_grid))
+    dx <- data.frame(y=-Inf, yend=-Inf, x=x1, xend=x2)
+    dy <- data.frame(x=-Inf, xend=-Inf, y=y1, yend=y2)
+    
     ggplot(dat,
            aes(x = year,
                y = vals,
@@ -172,10 +180,16 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
                linetype = as.factor(mean),
                shape = as.factor(mean),
                colour = as.factor(mean))) +
+      geom_segment(aes(x = x1, y = y, xend = x2, yend =y),
+                   colour = "grey84", lwd = 0.4,
+                   data = break_x, inherit.aes = F,
+                   alpha = 0.4)+
+      geom_segment(aes(x = x, y = y1, xend = x, yend =y2),
+                   colour = "grey84", lwd = 0.4,
+                   data = break_y,
+                   inherit.aes = F,alpha = 0.4)+
       geom_line() +
       geom_point() +
-      xlim(xlim) +
-      ylim(ylim) +
       scale_colour_manual(values = col,
                           labels = lbs)+
       scale_shape_manual( values = c(NA,16), labels = lbs)+
@@ -193,6 +207,18 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
             legend.background=element_blank())+
       theme(axis.text = element_text(size = 15),
             axis.title=element_text(size=15))+
+      theme(panel.border = element_blank(),
+            panel.grid = element_blank())+
+      theme(plot.margin = unit(c(1,1,1,1), "cm"))+
+      list(geom_segment(data=dx, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+           scale_x_continuous(breaks = round(seq(x1,x2, length.out = length_grid),0),
+                              labels = every_nth(round(seq(x1,x2,length.out =length_grid),0), 4,
+                                                 inverse = TRUE)))+
+      list(geom_segment(data=dy, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE),
+           scale_y_continuous(breaks=round(seq(y1,y2,yaxe_tick),1),
+                              labels = every_nth(round(seq(y1,y2,yaxe_tick),1),
+                                                 length(round(seq(y1,y2,yaxe_tick),1))/4,
+                                                 inverse = TRUE)))+
       theme(plot.background = element_rect(fill = "transparent",colour = NA),
             panel.background = element_rect(fill = "transparent",colour = NA))
     
@@ -604,7 +630,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     }
     
     if(save_year_p){
-      pdf(paste0("../../latex/plots/","/asfr_", year,".pdf"), width=5, height=5) 
+      pdf(paste0("../../latex/plots/","/asfr_", year,"_2.pdf"), width=5, height=5) 
       print(p_year)
       dev.off()
     }
@@ -1397,7 +1423,12 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
       name <- paste0("desired","_", "fore")
     }
     
-    p <- p_sim(ldat, ylim = c(2,2.7), xlim = c(1960, 2020), colour = colour)
+    p <- p_sim(ldat, 
+               colour = colour,
+               x1 = 1960,
+               x2 = 2020,
+               y1 = 1.6,
+               y2 = 3)
     
     
     p <- p + xlab("Year") + ylab("Desired Family Size")

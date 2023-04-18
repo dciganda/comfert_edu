@@ -123,15 +123,15 @@ comfert <- function(seed_val, param, parallel_run = F, cluster = F){
                     wtUnion = Inf,
                     unionYear = 1L)]
       
-      if(year(time)>=1980 & year(time)<1985){
+      #if(year(time)>=1980 & year(time)<1985){
         
-        mean_gamma <- mean_d * (1 + (delta  * (-1)^pop[rid,activity] * (1-prop_w[pop[rid,activity]+1]))) * delta_one 
+      #  mean_gamma <- mean_d * (1 + (delta  * (-1)^pop[rid,activity] * (1-prop_w[pop[rid,activity]+1]))) * delta_one 
         
-      }else{
+      #}else{
       
       mean_gamma <- mean_d * (1 + (delta  * (-1)^pop[rid,activity] * (1-prop_w[pop[rid,activity]+1])))
       
-      }
+      #}
       
       k <- k_vals[which.min(abs(mean_gamma-mean)), k]
       
