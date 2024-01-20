@@ -6,6 +6,8 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
                      scenario = F, save = F, interval = F,
                      alpha_int = 0.05, fore = F, last_obs_year = 2019) {
   
+  # browser()
+  
   # to set options in axes
   scaleFUN <- function(x) sprintf("%.1f", x)
   windowsFonts(Times=windowsFont("TT Times New Roman"))
@@ -327,7 +329,9 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
       list(geom_segment(data=dx, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE))+
       list(geom_segment(data=dy, aes(x=x, y=y, xend=xend, yend=yend), inherit.aes=FALSE))+
       theme(plot.background = element_rect(fill = "transparent",colour = NA),
-            panel.background = element_rect(fill = "transparent",colour = NA))
+            panel.background = element_rect(fill = "transparent",colour = NA))+
+      theme(text = element_text(family = "Times New Roman"))
+    
     
   }
   p_obs_fore_sc <- function(dat, x1, x2, y1, y2, lbs, lbs_cats, leg_pos, colour){
@@ -392,7 +396,8 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
                               labels = every_nth(round(seq(y1,y2,length.out = length_grid),1), 6,
                                                  inverse = TRUE)))+
       theme(plot.background = element_rect(fill = "transparent",colour = NA),
-            panel.background = element_rect(fill = "transparent",colour = NA))
+            panel.background = element_rect(fill = "transparent",colour = NA))+
+      theme(text = element_text(family = "Times New Roman"))
 
   }
 
@@ -635,7 +640,7 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
     }
     return(p_year)
   }
-  
+  # browser()
   
   # get data
   source(file.path("..","estimation","get_obs.R"))
@@ -646,6 +651,8 @@ plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
   sim_set <- get_sim(res_path, iniY, endY, nsim,
                      obs_set, asfr, unplanned,
                      unwanted, desired, all_sim = T)
+  
+  
   
   
   if(asfr){
