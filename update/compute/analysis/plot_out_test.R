@@ -1,4 +1,4 @@
-plot_out <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
+plot_out_test <- function(global_path, res_path, post_dat, pop, iniY, endY, nsim,
                      weights, asfr = F, tfr = F, ccf = F,
                      ccf_edu = F, ccf_edu_obs = F, ccf_compare = F, mab = F, mas = F,
                      mabs = F, unplanned = F, unwanted = F, desired = F,

@@ -1,9 +1,9 @@
 # PACKAGES ####
-p <- c("parallel","data.table", "splines", "ggplot2", "survival") 
+p <- c("parallel","data.table", "splines", "ggplot2", "survival", "stargazer") 
 invisible(lapply(p, library, character.only = TRUE))
 
 # GET RESULTS ####
-id <- list.files(file.path("..", "local", "results"))[17]
+id <- list.files(file.path("..", "local", "results"))[5]
 global_path <- file.path("..", "local", "results", id)
 res_path <- file.path(global_path,"results")
 
@@ -15,10 +15,11 @@ pop <- hp$pop[1]
 iniY <- hp$iniY[1]
 endY <- hp$endY[1]
 nsim <- hp$nsim[1]
+country <- "NO"
 
 # ANALYSIS ####
 source(file.path("..","analysis","check_paramset.R"))
-source(file.path("..","analysis","plot_out.R"))
+source(file.path("..","analysis","plot_out_test.R"))
 
 
 # Get posterior distribution
@@ -27,7 +28,7 @@ post[order(post$mse),]
 opt_res_dir <- check_paramset(res_dir = global_path, rank = 1)
 
 # Plot outcomes
-plot_out(global_path = global_path,
+plot_out_test(global_path = global_path,
          res_path = opt_res_dir,
          post_dat = post,
          pop = pop,
@@ -37,14 +38,14 @@ plot_out(global_path = global_path,
          weights = weights,
          unplanned = F,
          unwanted = F,
-         desired = F,
+         desired = T,
          tfr = F,
          ccf = T,
-         mab = F,
-         ccf_edu_obs = F,
+         mab = T,
+         ccf_edu_obs = T,
          ccf_compare = F,
          css = F,
-         asfr = F,
+         asfr = T,
          gap = F,
          gap_edu = F,
          colour = T, 
@@ -60,17 +61,34 @@ gp <- readRDS(file.path(global_path, "gp", "gp.rds"))
 FANOVADecomposition.gp(gp, verbose = F, Interaction = F)
 
 # SCENARIOS ####
+# FIXED PARAMETERS ####
+fix_p <- list(lambda = 2.5e-08,                     # rate decrease penalty intention after birth
+              sd_lnrm = 0.16,                       # stdrd dev lognorm
+              gamma = 38,                           # Fecundability age
+              kappa = 0.25,                         # Fecundability rate
+              A = 0.07,                             # reduction risk unplanned after achieve D
+              phi = .22,                            # maximum fecundability
+              theta = 0.1,                          # scale of truncated Gamma (D)
+              delta_one = 1.05,
+              end_mau = 19.7,
+              ini_mau = 32,
+              u = c(seq(0.22, 0.09,
+                        length.out = 1938-iniY),   # single probability:
+                    seq(0.09, 0.16,
+                        length.out = (endY+1)-1938))
+)
+
 source(file.path("..","sim_trajectories","compute_trajectories.R"))
-ini_c <- 2500
+ini_c <- 500
 param <- post[order(post$mse),!names(post)%in%c("mse", "modName")][1,]
 path_to <- function(file){
   file.path("..","data",country,"in", file)}
 
 t_out <- compute_trajectories(param, ini_c)
 
-st_dir <- file.path(res_dir,"sim_trajectories")
+st_dir <- file.path(global_path,"sim_trajectories")
 dir.create(st_dir, showWarnings = F, recursive = T)
-saveRDS(t_out$simDat, file.path(st_dir, "sim_trajectories.rds"))
+saveRDS(t_out$simDat, file.path(st_dir, "sim_trajectories2.rds"))
 
 
 source(file.path("..","analysis","duration_models.R"))
@@ -83,8 +101,8 @@ kr_coeffs <- get_coeffs()
 kr_coeffs$ind <- rep(1:4,each = 10)
 
 # simulated data 
-# sim_dat <- readRDS(file.path(st_dir, "sim_trajectories.rds"))
-sim_dat <- readRDS("sim_trajectories.rds")
+#sim_dat <- readRDS("../local/results/20230323_132513/sim_trajectories/sim_trajectories.rds")
+sim_dat <- readRDS(file.path(st_dir,"sim_trajectories2.rds"))
 
 # models second birth
 scnd_m0 <- duration_models(data = sim_dat, parity_transition = "second", desired = F, activity = F, se = T)
@@ -101,34 +119,34 @@ models_third$model <- c(rep("m0",nrow(third_m0)),rep("m1",nrow(third_m1)),rep("m
 
 # Plot
 # source(file.path("..","analysis","plot_models_se.R"))
-source(file.path("..","analysis","plot_models.R"))
+source(file.path("..","analysis","plot_models_test.R"))
 
 plot_obs(models_scnd, exclude_sub_level = "none", level = "SEC",
-         x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+         x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
 plot_obs(models_scnd, exclude_sub_level = "none", level = "TER",
-         x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+         x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
 plot_obs_sim(models_scnd, exclude_sub_level = "none", level = "SEC",parity = "second",
-             x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+             x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
 plot_obs_sim(models_scnd, exclude_sub_level = "none", level = "TER", parity = "second",
-             x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+             x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
 plot_obs_sim(models_third, exclude_sub_level = "none", level = "SEC",parity = "third",
-             x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+             x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
 plot_obs_sim(models_third, exclude_sub_level = "none", level = "TER",parity = "third",
-             x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+             x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
 
-plot_sim_models(models_scnd, level = "SEC", x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+plot_sim_models(models_scnd, level = "SEC", x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
-plot_sim_models(models_scnd, level = "TER", x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+plot_sim_models(models_scnd, level = "TER", x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
-plot_sim_models(models_third, level = "SEC", x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+plot_sim_models(models_third, level = "SEC", x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
-plot_sim_models(models_third, level = "TER", x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = T)
+plot_sim_models(models_third, level = "TER", x1 = 1940, x2 = 1960, y1 = 0.4, y2 = 1.6, save = F)
 
 
 

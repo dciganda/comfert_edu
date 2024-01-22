@@ -1,4 +1,5 @@
 # to set options in axes
+library(extrafont)
 scaleFUN <- function(x) sprintf("%.1f", x)
 font_import() 
 loadfonts(device = "win")
